@@ -825,6 +825,18 @@ a.gcard{text-decoration:none;color:inherit}
    מחסן — מערכת ניהול מלאי | קובץ יחיד, ללא תלויות חיצוניות
    ========================================================== */
 
+/* ==========================================================
+   הגדרות חיבור קבועות ל-GitHub (אופציונלי)
+   תוכל למלא כאן את הפרטים כדי שלא תצטרך להזין אותם בממשק:
+   ========================================================== */
+const HARDCODED_GH = {
+  repo: "ben111000111/yeynot-backup",      //
+  path: "data/backup.json",
+  branch: "main",
+  token: "",     // לדוגמה: "github_pat_11AAA..."
+  auto: true
+};
+
 const KEY = "wms.v1";
 const GH_KEY = "wms.gh.v1"; // מפתח שמירה עצמאי לשרת הגיבוי והטוקן
 const $  = (s, r=document) => r.querySelector(s);
@@ -833,7 +845,15 @@ const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const DEF = {
   products: [], moves: [], rules: [], log: [], debts: [],
   settings: { org:"מחסן יינות", currency:"₪", defStd:6, expDays:90, theme:"light",
-    gh: { repo:"", path:"data/backup.json", branch:"main", token:"", auto:true, lastSync:0, lastSha:"", syncedAt:0 } },
+    gh: { 
+      repo: HARDCODED_GH.repo, 
+      path: HARDCODED_GH.path, 
+      branch: HARDCODED_GH.branch, 
+      token: HARDCODED_GH.token, 
+      auto: HARDCODED_GH.auto, 
+      lastSync:0, lastSha:"", syncedAt:0 
+    } 
+  },
   meta: { created:Date.now(), updated:Date.now(), v:1 }
 };
 
@@ -862,6 +882,12 @@ function load(){
       Object.assign(DB.settings.gh, ghObj);
     }
   }catch(e){}
+
+  // במידה ושדות ה-GitHub ריקים בזיכרון, נשתמש בערכים שהוגדרו בקוד
+  if(!DB.settings.gh.repo && HARDCODED_GH.repo) DB.settings.gh.repo = HARDCODED_GH.repo;
+  if(!DB.settings.gh.token && HARDCODED_GH.token) DB.settings.gh.token = HARDCODED_GH.token;
+  if((!DB.settings.gh.path || DB.settings.gh.path==="data/backup.json") && HARDCODED_GH.path) DB.settings.gh.path = HARDCODED_GH.path;
+  if((!DB.settings.gh.branch || DB.settings.gh.branch==="main") && HARDCODED_GH.branch) DB.settings.gh.branch = HARDCODED_GH.branch;
 }
 
 let saveT;
@@ -973,7 +999,7 @@ const OPS = { lt:{label:"קטן מ־",f:(a,b)=>a<b}, lte:{label:"קטן או ש�
 
 function defaultRules(){
   return [
-    {id:uid(), name:"אזל מהמלאי",       field:"qty",   op:"lte", val:0,  sev:"crit", scope:"", on:true},
+    {id:uid(), name:"אזל מהמלאי",        field:"qty",   op:"lte", val:0,  sev:"crit", scope:"", on:true},
     {id:uid(), name:"ירידה מתחת לתקן",   field:"pctStd", op:"lt",  val:100,sev:"warn", scope:"", on:true},
     {id:uid(), name:"חלון השתייה מסתיים",  field:"expiry", op:"lte", val:90, sev:"warn", scope:"", on:true}
   ];
@@ -1911,7 +1937,7 @@ function renderLog(){
         <td class="t-name">${esc(e.text)}</td>
         <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(e.detail||"—")}</td>
         <td><span class="tag ${lv.c}">${lv.t}</span></td></tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyBox("היומן ריק","כל פעולה במערכת — הוספת יין, תנועה, סנכרון או שחזור — תירשם כאן אוטומטית.")}</td></tr></tbody>`;
+    : `<tbody><tr><td>${emptyBox("היומן ריק","כל פעולה במערכת — הוספת ייין, תנועה, סנכרון או שחזור — תירשם כאן אוטומטית.")}</td></tr></tbody>`;
 }
 
 /* ---------- GitHub ---------- */
