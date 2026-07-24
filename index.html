@@ -807,7 +807,9 @@ a.gcard{text-decoration:none;color:inherit}
 <!-- MOBILE NAV -->
 <nav class="mob-nav" id="mobNav">
   <button class="mob-btn on" data-view="dash"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-grid"/></svg>בקרה</button>
-  <button class="mob-btn" data-view="order"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-cart"/></svg>הזמנה</button>  <button class="mob-btn" data-view="debts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-debt"/></svg>חובות</button>  <button class="mob-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות</button>
+  <button class="mob-btn" data-view="order"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-cart"/></svg>הזמנה</button>
+  <button class="mob-btn" data-view="debts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-debt"/></svg>חובות</button>
+  <button class="mob-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות</button>
   <button class="mob-btn" data-view="privateFridge"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-fridge"/></svg>פרטי</button>
   <button class="mob-btn" data-view="alerts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bell"/></svg>התראות<span class="pill" id="mobAlerts" hidden>0</span></button>
   <button class="mob-btn" data-view="settings"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-gear"/></svg>הגדרות</button>
@@ -824,6 +826,7 @@ a.gcard{text-decoration:none;color:inherit}
    ========================================================== */
 
 const KEY = "wms.v1";
+const GH_KEY = "wms.gh.v1"; // מפתח שמירה עצמאי לשרת הגיבוי והטוקן
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
@@ -841,15 +844,26 @@ let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"t
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(!raw) return;
-    const p = JSON.parse(raw);
-    DB = Object.assign(structuredClone(DEF), p);
-    DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
-    DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{});
-    if(!Array.isArray(DB.log)) DB.log = [];
-    if(!Array.isArray(DB.debts)) DB.debts = [];
+    if(raw){
+      const p = JSON.parse(raw);
+      DB = Object.assign(structuredClone(DEF), p);
+      DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
+      DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{});
+      if(!Array.isArray(DB.log)) DB.log = [];
+      if(!Array.isArray(DB.debts)) DB.debts = [];
+    }
   }catch(e){ toast("קובץ הנתונים המקומי פגום. נטענה מערכת ריקה.","err"); }
+
+  // טעינה עצמאית של פרטי שרת הגיבוי שאינם נמחקים ברענון/איפוס
+  try{
+    const savedGh = localStorage.getItem(GH_KEY);
+    if(savedGh){
+      const ghObj = JSON.parse(savedGh);
+      Object.assign(DB.settings.gh, ghObj);
+    }
+  }catch(e){}
 }
+
 let saveT;
 function save(){
   DB.meta.updated = Date.now();
@@ -1481,8 +1495,8 @@ function renderProducts(){
   $$("#viewSeg .seg-b").forEach(b=>b.classList.toggle("on", b.dataset.pv===ui.pv));
 
   const emptyHTML = emptyBox(DB.products.filter(p=>!p.isPrivate).length?"אין יינות שתואמים לסינון":"המרתף ריק",
-    DB.products.filter(p=>!p.isPrivate).length?"שנה את הסינון או נקה את החיפוש.":"הוסף יין ראשון כדי להתחיל לנהל מלאי מול תקן.",
-    `<button class="btn primary" onclick="productModal()">הוספת יין</button>`);
+    DB.products.filter(p=>!p.isPrivate).length?"שנה את הסינון או נקה את החיפוש.":"הוסף ייין ראשון כדי להתחיל לנהל מלאי מול תקן.",
+    `<button class="btn primary" onclick="productModal()">הוספת ייין</button>`);
 
   $("#prodTbl").innerHTML = list.length ? `
     <thead><tr>${cols.map(([k,l,c])=>`<th data-sk="${k}" class="${c}">${l} ${arw(k)}</th>`).join("")}<th class="no-sort"></th></tr></thead>
@@ -1704,7 +1718,7 @@ function renderAlerts(){
   const al = evalAlerts();
   $("#alertCount").textContent = al.length + " פתוחות";
   $("#alertList").innerHTML = al.length ? al.map(a=>alertRow(a)).join("")
-    : emptyBox("שקט במרתף","אף יין לא עומד בתנאי של כלל פעיל.");
+    : emptyBox("שקט במרתף","אף ייין לא עומד בתנאי של כלל פעיל.");
   const badge = al.length;
   [["#navAlerts"],["#mobAlerts"]].forEach(([s])=>{ const el=$(s); if(!el) return; el.hidden = !badge; el.textContent = badge>99?"99+":badge; });
 
@@ -1966,6 +1980,7 @@ async function ghPush(reason="ידני", silent=false){
     gh().lastSha = (j.content && j.content.sha) || "";
     gh().lastSync = Date.now();
     save();
+    saveSync(); // שמירה קבועה גם של הסטטוס
     if(!silent) toast("הגיבוי הועלה לגיטהאב","ok");
     return true;
   }catch(e){
@@ -1983,7 +1998,7 @@ function applyRemote(p){
     { repo:keep.repo, path:keep.path, branch:keep.branch, token:keep.token, auto:keep.auto, lastSync:Date.now() });
   if(!Array.isArray(DB.log)) DB.log = [];
   if(!Array.isArray(DB.debts)) DB.debts = [];
-  save(); applyTheme(); renderSettings(); refresh(); syncUI();
+  save(); saveSync(); applyTheme(); renderSettings(); refresh(); syncUI();
 }
 
 async function ghPull(opts={}){
@@ -2081,37 +2096,51 @@ function syncUI(state){
     : "עוד לא בוצע סנכרון מהמכשיר הזה.";
   $("#ghAuto") && $("#ghAuto").classList.toggle("on", !!c.auto);
 }
+
 function renderSync(){
   const c = gh();
-  $("#ghRepo").value = c.repo || "";
-  $("#ghPath").value = c.path || "data/backup.json";
-  $("#ghBranch").value = c.branch || "main";
-  $("#ghToken").value = c.token || "";
+  if($("#ghRepo")) $("#ghRepo").value = c.repo || "";
+  if($("#ghPath")) $("#ghPath").value = c.path || "data/backup.json";
+  if($("#ghBranch")) $("#ghBranch").value = c.branch || "main";
+  if($("#ghToken")) $("#ghToken").value = c.token || "";
   syncUI();
 }
+
 function saveSync(){
   const c = gh();
-  c.repo = $("#ghRepo").value.trim();
-  c.path = $("#ghPath").value.trim() || "data/backup.json";
-  c.branch = $("#ghBranch").value.trim() || "main";
-  c.token = $("#ghToken").value.trim();
+  if($("#ghRepo")) c.repo = $("#ghRepo").value.trim();
+  if($("#ghPath")) c.path = $("#ghPath").value.trim() || "data/backup.json";
+  if($("#ghBranch")) c.branch = $("#ghBranch").value.trim() || "main";
+  if($("#ghToken")) c.token = $("#ghToken").value.trim();
+  
+  // שמירה בלעדית ועמידה בדפדפן שלא תמחק
+  try{
+    localStorage.setItem(GH_KEY, JSON.stringify(c));
+  }catch(e){}
   save(); syncUI();
 }
 
 /* ---------- wiring ---------- */
 ["#ghRepo","#ghPath","#ghBranch","#ghToken"].forEach(sel=>{
   const el = $(sel);
-  if(el) el.addEventListener("change", ()=>{ saveSync(); logIt("data","ok","עודכנו הגדרות הסנכרון", gh().repo + " · " + gh().path); });
+  if(el){
+    // שמירה בזמן אמת עם כל קלט/שינוי בשדה
+    el.addEventListener("input", saveSync);
+    el.addEventListener("change", saveSync);
+  }
 });
-if($("#ghAuto")) $("#ghAuto").onclick = ()=>{ gh().auto = !gh().auto; save(); syncUI();
+
+if($("#ghAuto")) $("#ghAuto").onclick = ()=>{ gh().auto = !gh().auto; saveSync();
   logIt("data","ok", gh().auto ? "סנכרון אוטומטי הופעל" : "סנכרון אוטומטי כובה", ""); };
 if($("#ghPushBtn")) $("#ghPushBtn").onclick = ()=>ghPush("ידני");
 if($("#ghPullBtn")) $("#ghPullBtn").onclick = ()=>confirmModal("הורדה מהענן",
   "הנתונים שבמכשיר יוחלפו בגרסה שבענן. אם יש כאן שינויים שלא הועלו — הם יאבדו.","הורדה", ()=>ghPull({}));
 if($("#ghTestBtn")) $("#ghTestBtn").onclick = ghTest;
 if($("#ghForget")) $("#ghForget").onclick = ()=>confirmModal("ניתוק מהענן",
-  "הטוקן יימחק מהמכשיר הזה. הגיבויים שכבר עלו לגיטהאב יישארו שם.","ניתוק", ()=>{
-    gh().token = ""; gh().lastSha = ""; save(); renderSync();
+  "הטוקן והפרטים יימחקו מהמכשיר הזה. הגיבויים שכבר עלו לגיטהאב יישארו שם.","ניתוק", ()=>{
+    gh().token = ""; gh().repo = ""; gh().lastSha = ""; 
+    try{ localStorage.removeItem(GH_KEY); }catch(e){}
+    save(); renderSync();
     logIt("sync","warn","נותק החיבור לגיטהאב","הטוקן נמחק מהמכשיר"); toast("נותק מהענן","warn"); });
 
 /* כפתורי סנכרון מהירים בראש העמוד */
