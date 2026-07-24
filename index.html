@@ -248,6 +248,16 @@ tbody tr:last-child td{border-bottom:none}
 .empty-t{font-weight:650;font-size:14.5px}
 .empty-s{font-size:13px;color:var(--muted);margin-top:4px;max-width:330px;margin-inline:auto}
 
+/* ============ ORDER & DEBT SYSTEM ============ */
+.order-layout{display:grid;grid-template-columns:1fr 340px;gap:16px}
+@media (max-width:960px){.order-layout{grid-template-columns:1fr}}
+.cart-list{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-inline-end:4px}
+.cart-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--line-soft);border-radius:var(--r-sm)}
+.cart-item-title{font-weight:600;font-size:13px;flex:1;min-width:0}
+.cart-item-price{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.cart-qty-ctrl{display:flex;align-items:center;gap:6px}
+.cart-qty-ctrl input{width:48px;text-align:center;padding:4px}
+
 /* ============ MODAL ============ */
 .veil{position:fixed;inset:0;background:rgba(12,20,28,.5);backdrop-filter:blur(3px);z-index:100;display:none;align-items:center;justify-content:center;padding:18px}
 .veil.on{display:flex;animation:fade .18s ease}
@@ -462,6 +472,8 @@ a.gcard{text-decoration:none;color:inherit}
 <g id="i-fridge"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="9" y1="5" x2="9" y2="7"/><line x1="9" y1="14" x2="9" y2="17"/></g>
 <g id="i-refresh"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></g>
 <g id="i-mode-edit"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>
+<g id="i-cart"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></g>
+<g id="i-debt"><path d="M17 9V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><rect x="9" y="11" width="12" height="8" rx="2"/><path d="M15 15h.01"/></g>
 </defs>
 </svg>
 
@@ -476,8 +488,10 @@ a.gcard{text-decoration:none;color:inherit}
       </div>
     </div>
     <nav class="nav" id="nav">
-      <div class="nav-label">תפעול</div>
+      <div class="nav-label">תפעול ומכירות</div>
       <button class="nav-btn on" data-view="dash"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-grid"/></svg>לוח בקרה</button>
+      <button class="nav-btn" data-view="order"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-cart"/></svg>הזמנה חדשה</button>
+      <button class="nav-btn" data-view="debts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-debt"/></svg>פנקס חובות<span class="pill" id="navDebts" hidden>0</span></button>
       <button class="nav-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות המחסן</button>
       <button class="nav-btn" data-view="privateFridge"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-fridge"/></svg>מקרר פרטי</button>
       <button class="nav-btn" data-view="moves"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-swap"/></svg>תנועות מלאי</button>
@@ -505,6 +519,7 @@ a.gcard{text-decoration:none;color:inherit}
         <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-search"/></svg>
         <input type="text" id="globalSearch" placeholder="חיפוש מוצר, מק״ט, קטגוריה…">
       </div>
+      <button class="btn primary sm" data-goto="order" title="פתיחת מסך הזמנה"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-cart"/></svg>צור הזמנה</button>
       <button class="icon-btn" id="btnQuickPush" title="גיבוי והעלאה מהירים לענן" aria-label="גיבוי לענן">
         <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-up"/></svg>
       </button>
@@ -549,6 +564,51 @@ a.gcard{text-decoration:none;color:inherit}
             <div class="card-h"><span class="card-t">תנועות אחרונות</span><button class="btn sm spacer" data-goto="moves">ליומן המלא</button></div>
             <div class="tbl-wrap"><table id="dashMovesTbl"></table></div>
           </div>
+        </div>
+      </section>
+
+      <!-- ORDER CREATION PAGE -->
+      <section class="view" id="v-order">
+        <div class="order-layout">
+          <div class="card">
+            <div class="card-h">
+              <span class="card-t">בחירת יינות להזמנה</span>
+              <input type="text" id="orderSearch" placeholder="חיפוש לפי שם, יקב או מק״ט..." style="max-width:220px;margin-inline-start:auto">
+            </div>
+            <div class="tbl-wrap" style="max-height:500px"><table id="orderCatalogTbl"></table></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="card-t">סיכום הזמנה</span><button class="btn sm danger spacer" id="clearCartBtn">ריקון סל</button></div>
+            <div class="card-b">
+              <div class="cart-list" id="cartList"></div>
+              <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
+                <div class="row"><span style="font-weight:600">סה״כ לתשלום:</span><span class="spacer num" style="font-size:20px;font-weight:700" id="cartTotal">0 ₪</span></div>
+              </div>
+              <div class="form-grid mt">
+                <div class="field full"><label>שם הלקוח / מסעדה</label><input type="text" id="ordCustomer" placeholder="שם הלקוח"></div>
+                <div class="field full"><label>אופן תשלום</label>
+                  <select id="ordPayType">
+                    <option value="paid">שולם (מזומן / אשראי / העברה)</option>
+                    <option value="debt">הקפה / חוב (רישום בפנקס חובות)</option>
+                  </select>
+                </div>
+                <div class="field full"><label>הערה להזמנה</label><input type="text" id="ordNote" placeholder="מספר פקטורה, כתובת למשלוח וכו׳"></div>
+              </div>
+              <button class="btn primary block mt" id="submitOrderBtn" style="padding:12px"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-cart"/></svg>ביצוע הזמנה ועדכון מלאי</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DEBTS PAGE -->
+      <section class="view" id="v-debts">
+        <div class="kpis mb mt" id="debtKpis" style="margin-bottom:14px"></div>
+        <div class="card">
+          <div class="card-h">
+            <span class="card-t">פנקס חובות לקוחות</span>
+            <input type="text" id="debtSearch" placeholder="חיפוש לקוח..." style="max-width:200px;margin-inline-start:auto">
+          </div>
+          <div class="tbl-wrap"><table id="debtsTbl"></table></div>
         </div>
       </section>
 
@@ -747,12 +807,9 @@ a.gcard{text-decoration:none;color:inherit}
 <!-- MOBILE NAV -->
 <nav class="mob-nav" id="mobNav">
   <button class="mob-btn on" data-view="dash"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-grid"/></svg>בקרה</button>
-  <button class="mob-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות</button>
+  <button class="mob-btn" data-view="order"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-cart"/></svg>הזמנה</button>  <button class="mob-btn" data-view="debts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-debt"/></svg>חובות</button>  <button class="mob-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות</button>
   <button class="mob-btn" data-view="privateFridge"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-fridge"/></svg>פרטי</button>
-  <button class="mob-btn" data-view="moves"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-swap"/></svg>תנועות</button>
   <button class="mob-btn" data-view="alerts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bell"/></svg>התראות<span class="pill" id="mobAlerts" hidden>0</span></button>
-  <button class="mob-btn" data-view="reports"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-chart"/></svg>סיכומים</button>
-  <button class="mob-btn" data-view="log"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-log"/></svg>יומן</button>
   <button class="mob-btn" data-view="settings"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-gear"/></svg>הגדרות</button>
 </nav>
 
@@ -771,14 +828,14 @@ const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
 const DEF = {
-  products: [], moves: [], rules: [], log: [],
+  products: [], moves: [], rules: [], log: [], debts: [],
   settings: { org:"מחסן יינות", currency:"₪", defStd:6, expDays:90, theme:"light",
     gh: { repo:"", path:"data/backup.json", branch:"main", token:"", auto:true, lastSync:0, lastSha:"", syncedAt:0 } },
   meta: { created:Date.now(), updated:Date.now(), v:1 }
 };
 
 let DB = structuredClone(DEF);
-let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"table", globalEdit:false };
+let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"table", globalEdit:false, cart:[] };
 
 /* ---------- persistence ---------- */
 function load(){
@@ -790,6 +847,7 @@ function load(){
     DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
     DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{});
     if(!Array.isArray(DB.log)) DB.log = [];
+    if(!Array.isArray(DB.debts)) DB.debts = [];
   }catch(e){ toast("קובץ הנתונים המקומי פגום. נטענה מערכת ריקה.","err"); }
 }
 let saveT;
@@ -1055,6 +1113,8 @@ function emptyBox(t, s, action=""){
    ========================================================== */
 const PAGES = {
   dash:          ["לוח בקרה","תמונת מצב של המרתף והמחסן"],
+  order:         ["הזמנה חדשה","הרכבת סל קניות, עדכון מלאי וחישוב מחיר"],
+  debts:         ["פנקס חובות","מעקב חובות לקוחות ורישום תשלומים"],
   product:       ["כרטיס יין","כל הפרטים, המלאי וההיסטוריה"],
   products:      ["יינות המחסן","יקבים, בצירים ומלאי מול תקן"],
   privateFridge: ["מקרר פרטי","יינות לשימוש אישי — ללא השפעה על המחסן הכללי"],
@@ -1064,7 +1124,7 @@ const PAGES = {
   log:           ["יומן פעילות","כל פעולה שבוצעה במערכת"],
   settings:      ["הגדרות","העדפות, גיבוי ושחזור"]
 };
-const ROUTES = ["dash","products","privateFridge","moves","alerts","reports","log","settings"];
+const ROUTES = ["dash","order","debts","products","privateFridge","moves","alerts","reports","log","settings"];
 let routing = false;
 function setHash(h){
   if(location.hash === h) return;
@@ -1119,6 +1179,8 @@ function go(v){
   $("#pgSub").textContent   = PAGES[v][1];
   $(".scroll").scrollTop = 0;
   if(v==="reports") renderReports();
+  else if(v==="order") renderOrderPage();
+  else if(v==="debts") renderDebtsPage();
   else if(v==="log"){ if(typeof renderLog==="function") renderLog(); setHash("#/log"); }
   else if(v==="products") renderProducts();
   else if(v==="privateFridge") renderPrivateFridge();
@@ -1193,6 +1255,182 @@ function alertRow(a, link=true){
   return link
     ? `<a class="alert-row" href="#/product/${encodeURIComponent(a.p.sku||a.p.id)}">${inner}</a>`
     : `<div class="alert-row">${inner}</div>`;
+}
+
+/* ==========================================================
+   מערכת הזמנות ופנקס חובות
+   ========================================================== */
+function renderOrderPage(){
+  const search = ($("#orderSearch") ? $("#orderSearch").value : "").toLowerCase().trim();
+  const catalog = DB.products.filter(p=>!p.isPrivate && (
+    !search || `${p.name} ${p.winery||""} ${p.sku||""}`.toLowerCase().includes(search)
+  ));
+
+  $("#orderCatalogTbl").innerHTML = catalog.length ? `
+    <thead><tr><th class="no-sort">יין</th><th class="no-sort">במלאי</th><th class="no-sort">מחיר</th><th class="no-sort"></th></tr></thead>
+    <tbody>${catalog.map(p=>`<tr>
+      <td><div class="t-cell">${thumb(p)}<div><div class="t-name">${esc(p.name)}</div><div class="t-sku">${esc(wineLine(p))}</div></div></div></td>
+      <td class="num">${qty(p.qty)}</td>
+      <td class="num">${money(p.price||0)}</td>
+      <td><button class="btn sm primary" data-addcart="${p.id}">${svgIco("i-plus")} הוסף</button></td>
+    </tr>`).join("")}</tbody>
+  ` : `<tbody><tr><td colspan="4">${emptyBox("לא נמצאו יינות","נסה למחוק את החיפוש")}</td></tr></tbody>`;
+
+  renderCart();
+}
+
+function addToCart(pid){
+  const p = DB.products.find(x=>x.id===pid);
+  if(!p) return;
+  const exist = ui.cart.find(i=>i.pid===pid);
+  if(exist){
+    if(exist.qty + 1 > p.qty){ toast("אזהרה: הכמות בסל עולה על המלאי הקיים","warn"); }
+    exist.qty += 1;
+  } else {
+    if(p.qty < 1){ toast("אזהרה: היין אזל מהמלאי!","warn"); }
+    ui.cart.push({ pid: p.id, name: p.name, price: n(p.price), qty: 1 });
+  }
+  renderCart();
+}
+
+function renderCart(){
+  const cartList = $("#cartList");
+  if(!cartList) return;
+  if(!ui.cart.length){
+    cartList.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">הסל ריק. בחר יינות מהרשימה.</div>`;
+    $("#cartTotal").textContent = money(0);
+    return;
+  }
+  let total = 0;
+  cartList.innerHTML = ui.cart.map((item, idx)=>{
+    const lineTotal = item.qty * item.price;
+    total += lineTotal;
+    return `<div class="cart-item">
+      <div class="cart-item-title">${esc(item.name)}<div class="cart-item-price">${money(item.price)} ליח׳</div></div>
+      <div class="cart-qty-ctrl">
+        <button class="mini" data-cartchg="${idx}" data-dir="-1">-</button>
+        <input type="number" class="num" value="${item.qty}" min="1" data-cartset="${idx}">
+        <button class="mini" data-cartchg="${idx}" data-dir="1">+</button>
+      </div>
+      <div class="num" style="font-weight:600;min-width:60px;text-align:end">${money(lineTotal)}</div>
+      <button class="mini neg" data-cartrem="${idx}">${svgIco("i-trash")}</button>
+    </div>`;
+  }).join("");
+  $("#cartTotal").textContent = money(total);
+}
+
+function submitOrder(){
+  if(!ui.cart.length){ toast("הסל ריק!","err"); return; }
+  const customer = $("#ordCustomer").value.trim() || "לקוח מזדמן";
+  const payType = $("#ordPayType").value;
+  const note = $("#ordNote").value.trim();
+  const orderId = uid();
+  let total = 0;
+
+  for(const item of ui.cart){
+    const p = DB.products.find(x=>x.id===item.pid);
+    if(p){
+      p.qty = Math.max(0, n(p.qty) - item.qty);
+      p.updated = Date.now();
+      total += item.qty * item.price;
+      DB.moves.push({
+        id: uid(), pid: p.id, type: "sale", qty: item.qty, price: item.price,
+        date: new Date().toISOString(), note: `הזמנה #${orderId.slice(0,5)} · ${customer} ${note?`(${note})`:''}`, before: n(p.qty)+item.qty
+      });
+    }
+  }
+
+  if(payType === "debt"){
+    DB.debts.push({
+      id: orderId, customer, amount: total, paid: 0, date: new Date().toISOString(),
+      status: "open", items: [...ui.cart], note
+    });
+    toast(`הזמנה על סך ${money(total)} נרשמה כחוב עבור ${customer}`,"warn");
+  } else {
+    toast(`הזמנה הושלמה בהצלחה! חויב: ${money(total)}`,"ok");
+  }
+
+  ui.cart = [];
+  $("#ordCustomer").value = "";
+  $("#ordNote").value = "";
+  save();
+  refresh();
+  renderOrderPage();
+}
+
+function renderDebtsPage(){
+  const search = ($("#debtSearch") ? $("#debtSearch").value : "").toLowerCase().trim();
+  const list = DB.debts.filter(d => !search || d.customer.toLowerCase().includes(search));
+  
+  const openDebts = DB.debts.filter(d=>d.status==="open");
+  const totalDebtSum = openDebts.reduce((s,d)=>s + (d.amount - d.paid), 0);
+
+  $("#debtKpis").innerHTML = [
+    ["סה״כ חובות פתוחים", money(totalDebtSum), `${openDebts.length} לקוחות בהקפה`, openDebts.length?"k-warn":"k-ok"],
+    ["הזמנות ששולמו במלואן", DB.debts.filter(d=>d.status==="closed").length, "הזמנות לסגירה", "k-ok"]
+  ].map(([l,v,f,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></div>`).join("");
+
+  $("#debtsTbl").innerHTML = list.length ? `
+    <thead><tr>
+      <th class="no-sort">תאריך</th><th class="no-sort">שם הלקוח</th><th class="no-sort">סכום מקורי</th>
+      <th class="no-sort">שולם</th><th class="no-sort">יתרת חוב</th><th class="no-sort">סטטוס</th><th class="no-sort"></th>
+    </tr></thead>
+    <tbody>${list.map(d=>{
+      const remain = d.amount - d.paid;
+      return `<tr>
+        <td class="num">${dShort(d.date)}</td>
+        <td class="t-name">${esc(d.customer)}</td>
+        <td class="num">${money(d.amount)}</td>
+        <td class="num" style="color:var(--ok)">${money(d.paid)}</td>
+        <td class="num" style="font-weight:700;color:${remain>0?"var(--crit)":"var(--ok)"}">${money(remain)}</td>
+        <td><span class="tag ${d.status==="open"?"warn":"ok"}">${d.status==="open"?"חוב פתוח":"שולם ונסגר"}</span></td>
+        <td>
+          <div class="t-acts">
+            ${remain > 0 ? `<button class="btn sm primary" data-paydebt="${d.id}">גביית תשלום</button>` : ''}
+            <button class="mini neg" data-deldebt="${d.id}" title="מחיקת חוב">${svgIco("i-trash")}</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("")}</tbody>
+  ` : `<tbody><tr><td colspan="7">${emptyBox("אין חובות רשומים","כל החובות שולמו או שלא נרשמו הקפות.")}</td></tr></tbody>`;
+
+  const badge = openDebts.length;
+  $("#navDebts").hidden = !badge;
+  $("#navDebts").textContent = badge;
+}
+
+function payDebtModal(id){
+  const d = DB.debts.find(x=>x.id===id);
+  if(!d) return;
+  const remain = d.amount - d.paid;
+  openModal(`
+    <div class="modal-h"><div class="modal-t">גביית חוב — ${esc(d.customer)}</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-b">
+      <div class="kpis mb" style="margin-bottom:14px">
+        <div class="kpi"><div class="kpi-l">יתרת חוב נוכחית</div><div class="kpi-v">${money(remain)}</div></div>
+      </div>
+      <div class="field"><label>סכום הנגבה כעת</label><input type="number" id="payAmount" value="${remain}" max="${remain}"></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn" data-close>ביטול</button>
+      <button class="btn primary" id="confirmPayBtn">אישור תשלום</button>
+    </div>
+  `);
+
+  $("#confirmPayBtn").onclick = ()=>{
+    const amt = n($("#payAmount").value);
+    if(amt <= 0){ toast("הזן סכום תקין","err"); return; }
+    d.paid += amt;
+    if(d.paid >= d.amount){
+      d.paid = d.amount;
+      d.status = "closed";
+    }
+    save();
+    closeModal();
+    refresh();
+    renderDebtsPage();
+    toast("התשלום נרשם בהצלחה!","ok");
+  };
 }
 
 /* ---------- products ---------- */
@@ -1744,6 +1982,7 @@ function applyRemote(p){
   DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings && p.settings.gh) || {},
     { repo:keep.repo, path:keep.path, branch:keep.branch, token:keep.token, auto:keep.auto, lastSync:Date.now() });
   if(!Array.isArray(DB.log)) DB.log = [];
+  if(!Array.isArray(DB.debts)) DB.debts = [];
   save(); applyTheme(); renderSettings(); refresh(); syncUI();
 }
 
@@ -1947,7 +2186,7 @@ function productModal(id, forcePrivate=false){
         <div style="min-width:0;flex:1">
           <div style="font-size:13px;font-weight:600">גרור לכאן תמונה, או בחר קובץ</div>
           <div style="font-size:11.5px;color:var(--muted);margin-top:3px">התמונה מוקטנת ונשמרת בתוך המערכת — עובד גם בלי אינטרנט.</div>
-          <div class="row" style="margin-top:99px">
+          <div class="row" style="margin-top:9px">
             <button class="btn sm" id="pPick">בחירת תמונה</button>
             <button class="btn sm danger" id="pImgDel" ${img?"":"hidden"}>הסרה</button>
             <input type="file" id="pFile" accept="image/*" hidden>
@@ -2131,8 +2370,9 @@ function confirmModal(title, text, label, fn){
    אירועים, הגדרות, גיבוי והפעלה
    ========================================================== */
 function refresh(){
-  renderDash(); renderProducts(); renderPrivateFridge(); renderMoves(); renderAlerts();
+  renderDash(); renderProducts(); renderPrivateFridge(); renderMoves(); renderAlerts(); renderDebtsPage();
   if(ui.view==="reports") renderReports();
+  if(ui.view==="order") renderOrderPage();
   if(ui.view==="product"){
     const p = DB.products.find(x=>x.id===ui.pid);
     if(p) renderProduct(p); else go("products");
@@ -2196,6 +2436,7 @@ function importBackup(file){
       DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
       DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{}, {token:keepToken});
       if(!Array.isArray(DB.log)) DB.log = [];
+      if(!Array.isArray(DB.debts)) DB.debts = [];
       save(); applyTheme(); renderSettings(); refresh();
       toast(`שוחזרו ${DB.products.length} יינות ו־${DB.moves.length} תנועות`,"ok");
     }catch(e){ toast("הקובץ אינו גיבוי תקין של המערכת","err"); }
@@ -2221,6 +2462,9 @@ function loadDemo(){
     W("קברנה פרטי נדיר","יקב בוטיק","2017","קברנה סוביניון","אדום","גליל","PRIV-01", 3, 0, 10, 150, 350, "מקרר פרטי - מדף עליון", "", true)
   ];
   DB.moves = [];
+  DB.debts = [
+    { id: uid(), customer: "מסעדת השף", amount: 1250, paid: 500, date: new Date().toISOString(), status: "open", items: [] }
+  ];
   const now = Date.now();
   for(let d=59; d>=0; d--){
     const day = now - d*864e5;
@@ -2237,7 +2481,7 @@ function loadDemo(){
   }
   if(!DB.rules.length) DB.rules = defaultRules();
   save(); refresh(); renderSettings();
-  toast("נטענו 10 יינות ו־60 ימי תנועות לדוגמה","ok");
+  toast("נטענו 10 יינות, חובות ו־60 ימי תנועות לדוגמה","ok");
 }
 
 /* ---- global events ---- */
@@ -2253,6 +2497,29 @@ document.addEventListener("click", e=>{
   const ed = t.closest("[data-edit]"); if(ed) return productModal(ed.dataset.edit);
   const op = t.closest("[data-openprod]"); if(op) return openProductPage(op.dataset.openprod);
   const mf = t.closest("[data-mvfull]");   if(mf) return moveModal(mf.dataset.id, mf.dataset.mvfull);
+
+  /* Order & Debt Handlers */
+  const ac = t.closest("[data-addcart]"); if(ac) return addToCart(ac.dataset.addcart);
+  const cc = t.closest("[data-cartchg]");
+  if(cc){
+    const idx = parseInt(cc.dataset.cartchg);
+    const dir = parseInt(cc.dataset.dir);
+    ui.cart[idx].qty = Math.max(1, ui.cart[idx].qty + dir);
+    return renderCart();
+  }
+  const cr = t.closest("[data-cartrem]");
+  if(cr){
+    ui.cart.splice(parseInt(cr.dataset.cartrem), 1);
+    return renderCart();
+  }
+  const pd = t.closest("[data-paydebt]"); if(pd) return payDebtModal(pd.dataset.paydebt);
+  const dd = t.closest("[data-deldebt]");
+  if(dd){
+    return confirmModal("מחיקת חוב", "האם למחוק את החוב מהפנקס?", "מחיקה", ()=>{
+      DB.debts = DB.debts.filter(x=>x.id!==dd.dataset.deldebt);
+      save(); refresh(); renderDebtsPage(); toast("החוב נמחק","warn");
+    });
+  }
 
   const de = t.closest("[data-del]");
   if(de){ const p = DB.products.find(x=>x.id===de.dataset.del); if(!p) return;
@@ -2283,12 +2550,27 @@ document.addEventListener("click", e=>{
   const mk = t.closest("th[data-mk]");
   if(mk){ const k = mk.dataset.mk; ui.sortM = {k, d: ui.sortM.k===k ? -ui.sortM.d : 1}; return renderMoves(); }
 });
+
+document.addEventListener("input", e=>{
+  if(e.target.dataset.cartset !== undefined){
+    const idx = parseInt(e.target.dataset.cartset);
+    const val = Math.max(1, parseInt(e.target.value)||1);
+    ui.cart[idx].qty = val;
+    renderCart();
+  }
+});
+
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape") closeModal();
   if(e.key==="/" && !/input|textarea|select/i.test(e.target.tagName)){ e.preventDefault(); $("#globalSearch").focus(); }
 });
 
 $("#globalSearch").addEventListener("input", e=>{ ui.q = e.target.value; renderProducts(); renderPrivateFridge(); renderMoves(); });
+if($("#orderSearch")) $("#orderSearch").addEventListener("input", renderOrderPage);
+if($("#debtSearch")) $("#debtSearch").addEventListener("input", renderDebtsPage);
+if($("#clearCartBtn")) $("#clearCartBtn").onclick = ()=>{ ui.cart = []; renderCart(); };
+if($("#submitOrderBtn")) $("#submitOrderBtn").onclick = submitOrder;
+
 ["#fCat","#fStatus"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderProducts); });
 ["#fMoveType","#fMoveFrom","#fMoveTo"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderMoves); });
 ["#rFrom","#rTo","#incPrivate"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderReports); });
