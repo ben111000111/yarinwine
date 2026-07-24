@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6C2A47">
+<title>מחסן יינות — ניהול מלאי</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --paper:#F5F8FA;
+  --card:#FFFFFF;
+  --ink:#16202A;
+  --ink-2:#3E4F5E;
+  --muted:#6E8091;
+  --line:#E1E9EF;
+  --line-soft:#EFF4F7;
+  --brand:#6C2A47;
+  --brand-ink:#511E36;
+  --brand-wash:#F6EAF0;
+  --on-brand:#FFFFFF;
+  --ok:#2F7D4F;
+  --ok-wash:#E8F4EC;
+  --warn:#B26A0F;
+  --warn-wash:#FBF0DF;
+  --crit:#B93B31;
+  --crit-wash:#FBEAE8;
+  --shadow:0 1px 2px rgba(22,32,42,.05), 0 8px 24px -12px rgba(22,32,42,.16);
+  --shadow-lg:0 24px 60px -20px rgba(22,32,42,.32);
+  --r-sm:8px; --r:12px; --r-lg:18px;
+  --sans:"Segoe UI","Noto Sans Hebrew","Arial Hebrew",system-ui,-apple-system,Arial,sans-serif;
+  --mono:"SF Mono",ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace;
+  --rail:236px;
+  --t:150ms cubic-bezier(.4,0,.2,1);
+}
+html[data-theme="dark"]{
+  --paper:#0E141A;
+  --card:#172029;
+  --ink:#E7EEF4;
+  --ink-2:#B9C7D3;
+  --muted:#8399A9;
+  --line:#25313D;
+  --line-soft:#1D2731;
+  --brand:#D28FAF;
+  --brand-ink:#EBBBD0;
+  --brand-wash:#33192A;
+  --on-brand:#2B1020;
+  --ok:#5DBE84;
+  --ok-wash:#14301F;
+  --warn:#E3A44A;
+  --warn-wash:#332612;
+  --crit:#EE7A6E;
+  --crit-wash:#361A17;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg:0 24px 60px -20px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.5;
+  -webkit-text-size-adjust:100%;
+  transition:background var(--t), color var(--t);
+}
+body.global-edit-mode [contenteditable="true"]{
+  outline:2px dashed var(--brand)!important;
+  outline-offset:2px;
+  background:rgba(108, 42, 71, 0.05);
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+a{color:var(--brand);text-decoration:none}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
+::selection{background:var(--brand-wash);color:var(--brand-ink)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ SHELL ============ */
+.app{display:grid;grid-template-columns:var(--rail) 1fr;min-height:100vh}
+
+/* rail */
+.rail{
+  background:var(--card);border-inline-start:1px solid var(--line);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+  transition:background var(--t),border-color var(--t);
+}
+.brand{padding:20px 18px 16px;border-bottom:1px solid var(--line-soft);display:flex;gap:11px;align-items:center}
+.brand-mark{
+  width:36px;height:36px;border-radius:10px;background:var(--brand);
+  display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px var(--brand);
+}
+.brand-mark svg{width:20px;height:20px;stroke:var(--on-brand)}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2}
+.brand-sub{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.nav{padding:10px;display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto}
+.nav-label{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.1em;padding:14px 10px 6px}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r-sm);
+  color:var(--ink-2);font-size:14px;font-weight:500;width:100%;text-align:start;
+  transition:background var(--t),color var(--t);position:relative;
+}
+.nav-btn svg{width:17px;height:17px;stroke:currentColor;flex:none;opacity:.75}
+.nav-btn:hover{background:var(--line-soft);color:var(--ink)}
+.nav-btn.on{background:var(--brand-wash);color:var(--brand-ink);font-weight:600}
+.nav-btn.on svg{opacity:1}
+.nav-btn .pill{
+  margin-inline-start:auto;background:var(--crit);color:#fff;font-size:11px;font-weight:700;
+  min-width:19px;height:19px;border-radius:10px;display:grid;place-items:center;padding:0 5px;
+}
+.rail-foot{padding:12px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:8px}
+.conn{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);padding:0 4px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.dot.off{background:var(--warn)}
+.saved{font-size:11px;color:var(--muted);padding:0 4px}
+
+/* topbar */
+.main{display:flex;flex-direction:column;min-width:0}
+.top{
+  position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:10px;align-items:center;
+}
+.page-title{font-size:19px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.page-sub{font-size:12.5px;color:var(--muted);margin-top:1px}
+.top-search{position:relative;flex:1;max-width:300px;margin-inline-start:auto}
+.top-search svg{position:absolute;inset-inline-start:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--muted)}
+.top-search input{
+  width:100%;padding:9px 34px 9px 12px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--card);font-size:13.5px;transition:border-color var(--t),box-shadow var(--t);
+}
+.top-search input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash)}
+.clock{text-align:start;line-height:1.25;padding-inline:12px;border-inline-start:1px solid var(--line)}
+.clock-t{font-size:15px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.clock-d{font-size:11.5px;color:var(--muted)}
+.icon-btn{
+  width:36px;height:36px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;transition:background var(--t),border-color var(--t),transform var(--t);flex:none;
+}
+.icon-btn svg{width:17px;height:17px;stroke:var(--ink-2)}
+.icon-btn:hover{background:var(--line-soft)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.active{background:var(--brand-wash);border-color:var(--brand);color:var(--brand-ink)}
+
+.scroll{flex:1;overflow-y:auto;padding:22px 24px 90px}
+.view{display:none;animation:rise .22s ease both}
+.view.on{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ============ PRIMITIVES ============ */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);transition:background var(--t),border-color var(--t)}
+.card-h{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-t{font-size:14.5px;font-weight:650;letter-spacing:-.01em}
+.card-b{padding:16px}
+.eyebrow{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.12em;margin-bottom:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{margin-inline-start:auto}
+.grid{display:grid;gap:14px}
+.mt{margin-top:14px}
+.g-2{grid-template-columns:1fr 1fr}
+.g-wide{grid-template-columns:1.5fr 1fr}
+@media (max-width:1100px){.g-2,.g-wide{grid-template-columns:1fr}}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r-sm);
+  font-size:13.5px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  transition:background var(--t),border-color var(--t),transform var(--t),box-shadow var(--t);
+}
+.btn svg{width:15px;height:15px;stroke:currentColor}
+.btn:hover{background:var(--line-soft)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand);box-shadow:0 4px 14px -6px var(--brand)}
+.btn.primary:hover{background:var(--brand-ink);border-color:var(--brand-ink);color:var(--on-brand)}
+.btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 35%,transparent)}
+.btn.danger:hover{background:var(--crit-wash)}
+.btn.sm{padding:6px 11px;font-size:12.5px}
+.btn.block{width:100%;justify-content:center}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--ink-2)}
+.field .hint{font-size:11px;color:var(--muted);font-weight:400}
+input[type=text],input[type=number],input[type=date],input[type=datetime-local],select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--card);font-size:13.5px;transition:border-color var(--t),box-shadow var(--t);
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash)}
+textarea{resize:vertical;min-height:66px;line-height:1.5}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(11px) calc(50% - 2px),calc(16px) calc(50% - 2px);background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-inline-start:30px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
+.form-grid .full{grid-column:1/-1}
+
+.tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:650;white-space:nowrap}
+.tag.ok{background:var(--ok-wash);color:var(--ok)}
+.tag.warn{background:var(--warn-wash);color:var(--warn)}
+.tag.crit{background:var(--crit-wash);color:var(--crit)}
+.tag.info{background:var(--brand-wash);color:var(--brand-ink)}
+.tag.mute{background:var(--line-soft);color:var(--muted)}
+
+/* ============ KPI ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.kpi::before{content:"";position:absolute;inset-block:0;inset-inline-end:0;width:3px;background:var(--brand)}
+.kpi.k-warn::before{background:var(--warn)} .kpi.k-crit::before{background:var(--crit)} .kpi.k-ok::before{background:var(--ok)}
+.kpi-l{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.kpi-v{font-size:27px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em;margin-top:5px;line-height:1.1}
+.kpi-f{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+/* ============ STANDARD GAUGE ============ */
+.gauge{position:relative;height:7px;border-radius:4px;background:var(--line-soft);overflow:visible;min-width:74px}
+.gauge-fill{position:absolute;inset-block:0;inset-inline-start:0;border-radius:4px;background:var(--ok);transition:width .4s cubic-bezier(.4,0,.2,1)}
+.gauge-fill.warn{background:var(--warn)} .gauge-fill.crit{background:var(--crit)}
+.gauge-notch{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.55;border-radius:2px}
+.gauge-notch::after{content:"";position:absolute;inset-inline-start:-2px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.9}
+.gauge-wrap{display:flex;flex-direction:column;gap:5px;min-width:110px}
+.gauge-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+/* ============ TABLE ============ */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{
+  text-align:start;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.07em;
+  padding:9px 13px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--card);
+  position:sticky;top:0;z-index:2;cursor:pointer;user-select:none;
+}
+thead th:hover{color:var(--ink)}
+thead th.no-sort{cursor:default}
+thead th .arw{opacity:.45;font-size:9px}
+tbody td{padding:11px 13px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr{transition:background var(--t)}
+tbody tr:hover{background:var(--line-soft)}
+tbody tr:last-child td{border-bottom:none}
+.t-name{font-weight:600;letter-spacing:-.01em}
+.t-sku{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:2px}
+.t-acts{display:flex;gap:5px;justify-content:flex-end}
+.mini{
+  width:29px;height:29px;border-radius:7px;border:1px solid var(--line);display:grid;place-items:center;
+  transition:background var(--t),border-color var(--t),color var(--t);color:var(--ink-2);
+}
+.mini svg{width:14px;height:14px;stroke:currentColor}
+.mini:hover{background:var(--line-soft);color:var(--ink)}
+.mini.pos:hover{background:var(--ok-wash);color:var(--ok);border-color:var(--ok)}
+.mini.neg:hover{background:var(--crit-wash);color:var(--crit);border-color:var(--crit)}
+
+.empty{padding:52px 20px;text-align:center}
+.empty-i{width:44px;height:44px;margin:0 auto 12px;border-radius:12px;background:var(--line-soft);display:grid;place-items:center}
+.empty-i svg{width:21px;height:21px;stroke:var(--muted)}
+.empty-t{font-weight:650;font-size:14.5px}
+.empty-s{font-size:13px;color:var(--muted);margin-top:4px;max-width:330px;margin-inline:auto}
+
+/* ============ MODAL ============ */
+.veil{position:fixed;inset:0;background:rgba(12,20,28,.5);backdrop-filter:blur(3px);z-index:100;display:none;align-items:center;justify-content:center;padding:18px}
+.veil.on{display:flex;animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);width:100%;max-width:620px;
+  max-height:90vh;display:flex;flex-direction:column;animation:pop .22s cubic-bezier(.34,1.4,.64,1) both;border:1px solid var(--line);
+}
+.modal.wide{max-width:860px}
+@keyframes pop{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
+.modal-h{padding:17px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px}
+.modal-t{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.modal-b{padding:20px;overflow-y:auto;flex:1}
+.modal-f{padding:14px 20px;border-top:1px solid var(--line-soft);display:flex;gap:9px;justify-content:flex-end;background:var(--line-soft);border-radius:0 0 var(--r-lg) var(--r-lg)}
+
+/* ============ TOAST ============ */
+.toasts{position:fixed;bottom:20px;inset-inline-start:20px;z-index:200;display:flex;flex-direction:column;gap:9px}
+.toast{
+  background:var(--card);border:1px solid var(--line);border-inline-start:3px solid var(--brand);
+  border-radius:var(--r-sm);padding:11px 15px;box-shadow:var(--shadow-lg);font-size:13.5px;font-weight:550;
+  animation:slide .26s cubic-bezier(.34,1.3,.64,1) both;max-width:330px;
+}
+.toast.ok{border-inline-start-color:var(--ok)} .toast.warn{border-inline-start-color:var(--warn)} .toast.err{border-inline-start-color:var(--crit)}
+@keyframes slide{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+/* ============ ALERTS ============ */
+.alert-row{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line-soft);align-items:center}
+.alert-row:last-child{border-bottom:none}
+.alert-i{width:33px;height:33px;border-radius:9px;display:grid;place-items:center;flex:none}
+.alert-i svg{width:16px;height:16px;stroke:currentColor}
+.alert-i.crit{background:var(--crit-wash);color:var(--crit)}
+.alert-i.warn{background:var(--warn-wash);color:var(--warn)}
+.alert-i.info{background:var(--brand-wash);color:var(--brand-ink)}
+.alert-t{font-weight:600;font-size:13.5px}
+.alert-s{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ============ CHARTS ============ */
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart text{font-family:var(--sans);font-size:10.5px;fill:var(--muted)}
+.chart .grid-l{stroke:var(--line-soft);stroke-width:1}
+.chart .bar{fill:var(--brand);transition:opacity var(--t)}
+.chart .bar:hover{opacity:.72}
+.chart .bar.b2{fill:var(--warn)}
+.legend{display:flex;gap:15px;font-size:12px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;margin-inline-end:5px}
+
+/* ============ SETTINGS ============ */
+.set-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line-soft)}
+.set-row:last-child{border-bottom:none}
+.set-t{font-weight:600;font-size:13.5px}
+.set-s{font-size:12px;color:var(--muted);margin-top:2px;max-width:430px}
+.set-row .ctl{margin-inline-start:auto;flex:none}
+.switch{width:44px;height:25px;border-radius:14px;background:var(--line);position:relative;transition:background var(--t);flex:none}
+.switch::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform var(--t);box-shadow:0 1px 3px rgba(0,0,0,.28)}
+.switch.on{background:var(--brand)}
+html[dir=rtl] .switch.on::after{transform:translateX(-19px)}
+
+/* ============ IMAGES / GALLERY ============ */
+.t-cell{display:flex;gap:10px;align-items:center;min-width:0}
+.thumb{width:36px;height:46px;border-radius:6px;object-fit:contain;background:var(--line-soft);border:1px solid var(--line);flex:none}
+.thumb-ph{width:36px;height:46px;border-radius:6px;background:var(--line-soft);border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.thumb-ph svg{width:15px;height:15px;stroke:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;flex:none}
+.seg-b{padding:6px 13px;font-size:12.5px;font-weight:600;color:var(--muted);transition:background var(--t),color var(--t)}
+.seg-b.on{background:var(--brand-wash);color:var(--brand-ink)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:14px;padding:16px}
+.gcard{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card);display:flex;flex-direction:column;transition:transform var(--t),box-shadow var(--t),border-color var(--t)}
+.gcard:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--brand)}
+.gph{aspect-ratio:4/3;background:var(--line-soft);display:grid;place-items:center;overflow:hidden;position:relative}
+.gph img{width:100%;height:100%;object-fit:contain;padding:8px}
+.gph svg{width:26px;height:26px;stroke:var(--muted)}
+.gph .gbadge{position:absolute;top:8px;inset-inline-start:8px}
+.gbody{padding:12px;display:flex;flex-direction:column;gap:9px;flex:1}
+.gname{font-weight:650;font-size:13.5px;letter-spacing:-.01em;line-height:1.35}
+.gmeta{font-size:11.5px;color:var(--muted)}
+.gfoot{display:flex;gap:6px;align-items:center;margin-top:auto;padding-top:4px}
+.gprice{font-family:var(--mono);font-weight:650;font-size:13px}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:13px;display:flex;gap:13px;align-items:center;transition:border-color var(--t),background var(--t)}
+.drop.over{border-color:var(--brand);background:var(--brand-wash)}
+.drop-prev{width:62px;height:76px;border-radius:8px;object-fit:contain;background:var(--line-soft);border:1px solid var(--line);flex:none}
+.drop-ph{width:62px;height:76px;border-radius:8px;background:var(--line-soft);border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.drop-ph svg{width:19px;height:19px;stroke:var(--muted)}
+.meter{height:7px;border-radius:4px;background:var(--line-soft);overflow:hidden;margin-top:8px;max-width:280px}
+.meter i{display:block;height:100%;background:var(--brand);border-radius:4px;transition:width .4s}
+.meter i.hot{background:var(--warn)} .meter i.full{background:var(--crit)}
+.link-box{display:flex;gap:8px;align-items:center}
+.link-box input{font-family:var(--mono);font-size:12px;direction:ltr;text-align:left}
+
+/* ============ LINKS & PRODUCT PAGE ============ */
+.lnk{color:inherit;text-decoration:none;transition:color var(--t)}
+a.t-name,a.gname{display:block}
+a.btn{text-decoration:none}
+tbody tr[data-nav]:hover{background:var(--brand-wash)}
+.lnk:hover{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+[data-nav]{cursor:pointer}
+a.kpi{display:block;text-decoration:none;color:inherit}
+a.kpi:hover{border-color:var(--brand);transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+a.kpi{transition:transform var(--t),border-color var(--t),box-shadow var(--t)}
+a.alert-row{text-decoration:none;color:inherit;transition:background var(--t)}
+a.alert-row:hover{background:var(--line-soft)}
+a.gcard{text-decoration:none;color:inherit}
+.chev{margin-inline-start:auto;flex:none;opacity:.4}
+.chev svg{width:15px;height:15px;stroke:var(--muted)}
+.crumb{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);margin-bottom:12px;flex-wrap:wrap}
+.pp{display:grid;grid-template-columns:290px 1fr;gap:14px;align-items:start}
+.pp-img{width:100%;aspect-ratio:3/4;object-fit:contain;background:var(--line-soft);border-radius:var(--r-sm);padding:10px;display:block}
+.pp-ph{width:100%;aspect-ratio:3/4;background:var(--line-soft);border-radius:var(--r-sm);display:grid;place-items:center}
+.pp-ph svg{width:42px;height:42px;stroke:var(--muted)}
+.pp-title{font-size:22px;font-weight:700;letter-spacing:-.025em;line-height:1.25}
+.pp-sub{font-size:13.5px;color:var(--muted);margin-top:4px}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:13px;margin-top:16px}
+.dl-t{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.08em}
+.dl-v{font-size:13.5px;font-weight:600;margin-top:3px;word-break:break-word}
+.act-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+
+/* ============ RESPONSIVE ============ */
+.mob-nav{display:none}
+@media (max-width:1000px){
+  :root{--rail:0px}
+  .app{grid-template-columns:1fr}
+  .rail{display:none}
+  .top{padding:10px 14px;gap:9px}
+  .page-sub{display:none}
+  .scroll{padding:16px 14px 92px}
+  .form-grid{grid-template-columns:1fr}
+  .mob-nav{
+    display:flex;position:fixed;bottom:0;inset-inline:0;z-index:60;background:var(--card);
+    border-top:1px solid var(--line);padding:7px 5px calc(7px + env(safe-area-inset-bottom));justify-content:space-around;
+  }
+  .mob-btn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);flex:1;padding:5px 2px;font-weight:600;position:relative}
+  .mob-btn svg{width:19px;height:19px;stroke:currentColor}
+  .mob-btn.on{color:var(--brand)}
+  .mob-btn .pill{position:absolute;top:1px;inset-inline-end:22%;background:var(--crit);color:#fff;font-size:9.5px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:grid;place-items:center;padding:0 4px}
+  .clock-d{display:none}
+  .modal-f{flex-wrap:wrap}
+  .modal-f .btn{flex:1;justify-content:center}
+}
+@media (max-width:900px){ .c-hide-m{display:none} }
+@media (max-width:820px){ .pp{grid-template-columns:1fr} .act-grid{grid-template-columns:repeat(4,1fr)} }
+@media (max-width:620px){
+  .page-title{font-size:16px}
+  .c-hide-s{display:none}
+  .top{flex-wrap:wrap}
+  .top-search{order:9;flex-basis:100%;margin-inline-start:0}
+  .mini{width:34px;height:34px}
+  .mini svg{width:16px;height:16px}
+  .pp-title{font-size:18px}
+  .act-grid{grid-template-columns:repeat(2,1fr)}
+  .btn{padding:10px 15px}
+  .btn.sm{padding:8px 12px}
+  .kpi-v{font-size:23px}
+  .gal{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}
+  .hide-s{display:none}
+  .toasts{inset-inline:14px;bottom:78px}
+  .toast{max-width:none}
+}
+
+/* ============ PRINT (PDF) ============ */
+#printArea{display:none}
+@media print{
+  @page{size:A4;margin:13mm}
+  body{background:#fff!important;color:#000!important}
+  .app,.veil,.toasts,.mob-nav{display:none!important}
+  #printArea{display:block!important}
+  .p-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #6C2A47;padding-bottom:9px;margin-bottom:16px}
+  .p-title{font-size:20px;font-weight:700}
+  .p-meta{font-size:11px;color:#555;text-align:end;line-height:1.6}
+  .p-sec{margin-bottom:18px;break-inside:avoid}
+  .p-sec h3{font-size:13px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #ccc;letter-spacing:.03em}
+  .p-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:16px}
+  .p-kpi{border:1px solid #ddd;border-radius:6px;padding:9px}
+  .p-kpi b{display:block;font-size:17px;margin-top:3px}
+  .p-kpi span{font-size:10px;color:#666}
+  #printArea table{width:100%;border-collapse:collapse;font-size:10.5px}
+  #printArea th{background:#F6EAF0;text-align:start;padding:6px 7px;border:1px solid #ddd;font-size:10px}
+  #printArea td{padding:5px 7px;border:1px solid #e5e5e5}
+  #printArea tr{break-inside:avoid}
+  .p-foot{margin-top:20px;padding-top:8px;border-top:1px solid #ddd;font-size:9.5px;color:#777;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<svg style="display:none">
+<defs>
+<g id="i-box"><path d="M21 8v8a2 2 0 0 1-1 1.7l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.7l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></g>
+<g id="i-grid"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></g>
+<g id="i-swap"><path d="M17 3v14m0 0-4-4m4 4 4-4M7 21V7m0 0L3 11m4-4 4 4"/></g>
+<g id="i-bell"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></g>
+<g id="i-chart"><path d="M3 3v18h18M8 16V9m5 7V5m5 11v-4"/></g>
+<g id="i-gear"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9 2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5 2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1 3h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></g>
+<g id="i-search"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></g>
+<g id="i-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></g>
+<g id="i-moon"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></g>
+<g id="i-plus"><path d="M12 5v14M5 12h14"/></g>
+<g id="i-minus"><path d="M5 12h14"/></g>
+<g id="i-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></g>
+<g id="i-trash"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></g>
+<g id="i-down"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></g>
+<g id="i-print"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></g>
+<g id="i-alert"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></g>
+<g id="i-x"><path d="M18 6 6 18M6 6l12 12"/></g>
+<g id="i-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></g>
+<g id="i-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></g>
+<g id="i-chev"><path d="M15 18l-6-6 6-6"/></g>
+<g id="i-bottle"><path d="M10 2h4v5.2c0 .6.2 1.2.6 1.7l1.8 2.2c.4.5.6 1.1.6 1.7V20a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-7.2c0-.6.2-1.2.6-1.7l1.8-2.2c.4-.5.6-1.1.6-1.7z"/><path d="M7 15h10"/></g>
+<g id="i-cloud"><path d="M18 10h-1.3A7 7 0 1 0 4 16.3"/><path d="M12 12v9m0 0 4-4m-4 4-4-4"/><path d="M16 16h2a4 4 0 0 0 0-8h-.3"/></g>
+<g id="i-log"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></g>
+<g id="i-link"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></g>
+<g id="i-image"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></g>
+<g id="i-up"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></g>
+<g id="i-fridge"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="9" y1="5" x2="9" y2="7"/><line x1="9" y1="14" x2="9" y2="17"/></g>
+<g id="i-refresh"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></g>
+<g id="i-mode-edit"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>
+</defs>
+</svg>
+
+<div class="app">
+  <!-- ===== RAIL ===== -->
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg></div>
+      <div>
+        <div class="brand-name" id="orgName">מחסן יינות</div>
+        <div class="brand-sub">מרתף · מלאי · תקן</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-label">תפעול</div>
+      <button class="nav-btn on" data-view="dash"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-grid"/></svg>לוח בקרה</button>
+      <button class="nav-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות המחסן</button>
+      <button class="nav-btn" data-view="privateFridge"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-fridge"/></svg>מקרר פרטי</button>
+      <button class="nav-btn" data-view="moves"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-swap"/></svg>תנועות מלאי</button>
+      <div class="nav-label">בקרה</div>
+      <button class="nav-btn" data-view="alerts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bell"/></svg>התראות וכללים<span class="pill" id="navAlerts" hidden>0</span></button>
+      <button class="nav-btn" data-view="reports"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-chart"/></svg>סיכומים</button>
+      <button class="nav-btn" data-view="log"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-log"/></svg>יומן פעילות</button>
+      <button class="nav-btn" data-view="settings"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-gear"/></svg>הגדרות</button>
+    </nav>
+    <div class="rail-foot">
+      <div class="conn"><span class="dot" id="netDot"></span><span id="netTxt">מחובר</span></div>
+      <div class="saved" id="savedTxt">הכל נשמר מקומית</div>
+      <button class="conn" id="syncChip" style="text-align:start;padding:0 4px"><span class="dot" id="syncDot"></span><span id="syncTxt">ענן לא מוגדר</span></button>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="main">
+    <header class="top">
+      <div>
+        <div class="page-title" id="pgTitle">לוח בקרה</div>
+        <div class="page-sub" id="pgSub">תמונת מצב של המחסן</div>
+      </div>
+      <div class="top-search">
+        <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-search"/></svg>
+        <input type="text" id="globalSearch" placeholder="חיפוש מוצר, מק״ט, קטגוריה…">
+      </div>
+      <button class="icon-btn" id="btnQuickPush" title="גיבוי והעלאה מהירים לענן" aria-label="גיבוי לענן">
+        <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-up"/></svg>
+      </button>
+      <button class="icon-btn" id="btnQuickPull" title="הורדת גיבוי, ריענון וסנכרון" aria-label="סנכרון וריענון">
+        <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-refresh"/></svg>
+      </button>
+      <button class="icon-btn" id="globalEditBtn" title="הפעלת/השבתת עריכה גלובלית באתר" aria-label="מצב עריכה">
+        <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-mode-edit"/></svg>
+      </button>
+      <div class="clock hide-s">
+        <div class="clock-t" id="clockT">--:--:--</div>
+        <div class="clock-d" id="clockD">—</div>
+      </div>
+      <button class="icon-btn" id="shareBtn" title="העתקת קישור לדף הזה" aria-label="העתקת קישור">
+        <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-link"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="מצב לילה" aria-label="החלפת מצב תצוגה">
+        <svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-moon" id="themeIcon"/></svg>
+      </button>
+    </header>
+
+    <div class="scroll">
+      <!-- DASHBOARD -->
+      <section class="view on" id="v-dash">
+        <div class="kpis" id="kpis"></div>
+        <div class="grid mt g-wide" id="dashGrid">
+          <div class="card">
+            <div class="card-h"><span class="card-t">תנועת מלאי — 14 הימים האחרונים</span><span class="tag mute spacer" id="dashRange">—</span></div>
+            <div class="card-b"><div id="dashChart"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="card-t">דורש טיפול</span><button class="btn sm spacer" data-goto="alerts">לכל ההתראות</button></div>
+            <div id="dashAlerts"></div>
+          </div>
+        </div>
+        <div class="grid mt g-2" id="dashGrid2">
+          <div class="card">
+            <div class="card-h"><span class="card-t">הכי רחוק מהתקן</span></div>
+            <div class="tbl-wrap"><table id="dashGapTbl"></table></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="card-t">תנועות אחרונות</span><button class="btn sm spacer" data-goto="moves">ליומן המלא</button></div>
+            <div class="tbl-wrap"><table id="dashMovesTbl"></table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PRODUCT PAGE -->
+      <section class="view" id="v-product"><div id="prodPage"></div></section>
+
+      <!-- PRODUCTS -->
+      <section class="view" id="v-products">
+        <div class="card">
+          <div class="card-h">
+            <span class="card-t">רשימת מוצרים</span>
+            <select id="fCat" style="width:auto;min-width:130px"><option value="">כל סוגי היין</option></select>
+            <select id="fStatus" style="width:auto;min-width:130px">
+              <option value="">כל הסטטוסים</option>
+              <option value="crit">אזל מהמלאי</option>
+              <option value="warn">מתחת לתקן</option>
+              <option value="ok">תקין</option>
+              <option value="over">מעל המקסימום</option>
+            </select>
+            <div class="seg spacer" id="viewSeg">
+              <button class="seg-b on" data-pv="table">טבלה</button>
+              <button class="seg-b" data-pv="cards">כרטיסים</button>
+            </div>
+            <div class="row">
+              <button class="btn sm" id="expProdXls"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-down"/></svg>אקסל</button>
+              <button class="btn primary sm" id="addProdBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-plus"/></svg>יין חדש</button>
+            </div>
+          </div>
+          <div class="tbl-wrap" id="prodTblWrap"><table id="prodTbl"></table></div>
+          <div class="gal" id="prodGal" hidden></div>
+        </div>
+      </section>
+
+      <!-- PRIVATE FRIDGE -->
+      <section class="view" id="v-privateFridge">
+        <div class="card">
+          <div class="card-h">
+            <span class="card-t">מקרר פרטי (אינו נכלל בסיכומי המחסן הכלליים)</span>
+            <div class="spacer row">
+              <button class="btn primary sm" id="addPrivProdBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-plus"/></svg>יין למקרר הפרטי</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table id="privProdTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- MOVES -->
+      <section class="view" id="v-moves">
+        <div class="card">
+          <div class="card-h">
+            <span class="card-t">יומן תנועות</span>
+            <select id="fMoveType" style="width:auto;min-width:120px">
+              <option value="">כל הסוגים</option><option value="in">כניסה</option><option value="out">יציאה</option>
+              <option value="sale">מכירה</option><option value="adjust">ספירת מלאי</option>
+            </select>
+            <input type="date" id="fMoveFrom" style="width:auto">
+            <input type="date" id="fMoveTo" style="width:auto">
+            <div class="spacer row">
+              <button class="btn sm" id="expMovesXls"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-down"/></svg>אקסל</button>
+              <button class="btn primary sm" id="addMoveBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-plus"/></svg>רישום תנועה</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table id="movesTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- ALERTS -->
+      <section class="view" id="v-alerts">
+        <div class="grid g-wide" id="alertGrid">
+          <div class="card">
+            <div class="card-h"><span class="card-t">התראות פעילות</span><span class="tag mute spacer" id="alertCount">0</span></div>
+            <div id="alertList"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="card-t">כללי התראה</span>
+              <button class="btn primary sm spacer" id="addRuleBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-plus"/></svg>כלל חדש</button>
+            </div>
+            <div id="ruleList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="view" id="v-reports">
+        <div class="card">
+          <div class="card-h">
+            <span class="card-t">טווח תאריכים</span>
+            <input type="date" id="rFrom" style="width:auto">
+            <input type="date" id="rTo" style="width:auto">
+            <select id="rQuick" style="width:auto"><option value="">בחירה מהירה…</option><option value="7">7 ימים אחרונים</option><option value="30">30 ימים אחרונים</option><option value="90">רבעון אחרון</option><option value="365">שנה אחרונה</option><option value="m">החודש הנוכחי</option></select>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;margin-inline-start:10px">
+              <input type="checkbox" id="incPrivate"> הכלל גם את יינות המקרר הפרטי בדוח
+            </label>
+            <div class="spacer row">
+              <button class="btn sm" id="repXls"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-down"/></svg>אקסל</button>
+              <button class="btn sm" id="repCsv">CSV</button>
+              <button class="btn primary sm" id="repPdf"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-print"/></svg>PDF</button>
+            </div>
+          </div>
+          <div class="card-b"><div class="kpis" id="repKpis"></div></div>
+        </div>
+        <div class="grid mt g-2" id="repGrid">
+          <div class="card"><div class="card-h"><span class="card-t">מכירות והכנסות לפי יום</span></div><div class="card-b"><div id="repChart1"></div></div></div>
+          <div class="card"><div class="card-h"><span class="card-t">מובילי מכירות</span></div><div class="card-b"><div id="repChart2"></div></div></div>
+        </div>
+        <div class="grid mt g-2" id="repGrid2">
+          <div class="card"><div class="card-h"><span class="card-t">מכירות לפי סוג יין</span></div><div class="card-b"><div id="repChart3"></div></div></div>
+          <div class="card"><div class="card-h"><span class="card-t">ערך המלאי לפי סוג יין</span></div><div class="card-b"><div id="repChart4"></div></div></div>
+        </div>
+        <div class="card mt">
+          <div class="card-h"><span class="card-t">פירוט לפי יין</span><span class="tag mute spacer" id="repRangeTag">—</span></div>
+          <div class="tbl-wrap"><table id="repTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- LOG -->
+      <section class="view" id="v-log">
+        <div class="card">
+          <div class="card-h">
+            <span class="card-t">יומן פעילות</span>
+            <select id="fLogKind" style="width:auto;min-width:120px">
+              <option value="">כל הסוגים</option><option value="sync">סנכרון</option><option value="product">יינות</option>
+              <option value="move">תנועות</option><option value="rule">כללים</option><option value="data">נתונים</option>
+            </select>
+            <select id="fLogLevel" style="width:auto;min-width:110px">
+              <option value="">כל הרמות</option><option value="ok">הצליח</option><option value="warn">אזהרה</option><option value="err">שגיאה</option>
+            </select>
+            <div class="spacer row">
+              <button class="btn sm" id="logXls"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-down"/></svg>אקסל</button>
+              <button class="btn sm" id="logCsv">CSV</button>
+              <button class="btn sm danger" id="logClear">ניקוי היומן</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table id="logTbl"></table></div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="v-settings">
+        <div class="grid g-2" id="setGrid">
+          <div class="card">
+            <div class="card-h"><span class="card-t">כללי</span></div>
+            <div class="card-b">
+              <div class="set-row"><div><div class="set-t">שם המחסן</div><div class="set-s">מופיע בראש המסך ובראש כל דוח מודפס.</div></div><div class="ctl"><input type="text" id="setOrg" style="width:170px"></div></div>
+              <div class="set-row"><div><div class="set-t">מטבע</div><div class="set-s">סימן המטבע בתצוגת מחירים.</div></div><div class="ctl"><select id="setCur" style="width:110px"><option value="₪">₪ שקל</option><option value="$">$ דולר</option><option value="€">€ אירו</option></select></div></div>
+              <div class="set-row"><div><div class="set-t">תקן ברירת מחדל</div><div class="set-s">הכמות המינימלית שתיטען אוטומטית ביין חדש.</div></div><div class="ctl"><input type="number" id="setStd" min="0" style="width:90px"></div></div>
+              <div class="set-row"><div><div class="set-t">התראת חלון שתייה</div><div class="set-s">כמה ימים לפני סוף חלון השתייה להתריע.</div></div><div class="ctl"><input type="number" id="setExp" min="0" style="width:90px"></div></div>
+              <div class="set-row"><div><div class="set-t">מצב לילה</div><div class="set-s">ערכת צבעים כהה לעבודה במשמרות לילה.</div></div><div class="ctl"><div class="switch" id="setTheme"></div></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="card-t">נתונים וגיבוי</span></div>
+            <div class="card-b">
+              <div class="set-row"><div><div class="set-t">גיבוי לקובץ</div><div class="set-s">מוריד קובץ JSON עם כל היינות, התמונות, התנועות והכללים. שמור אותו בריפו שלך בגיטהאב.</div></div><div class="ctl"><button class="btn sm" id="bkExport"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-save"/></svg>הורדה</button></div></div>
+              <div class="set-row"><div><div class="set-t">שחזור מקובץ</div><div class="set-s">טוען קובץ גיבוי ומחליף את הנתונים הקיימים.</div></div><div class="ctl"><button class="btn sm" id="bkImport"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-up"/></svg>טעינה</button><input type="file" id="bkFile" accept=".json" hidden></div></div>
+              <div class="set-row"><div><div class="set-t">נתוני הדגמה</div><div class="set-s">טוען יינות ותנועות לדוגמה כדי להתרשם מהמערכת.</div></div><div class="ctl"><button class="btn sm" id="bkDemo">טעינת דוגמה</button></div></div>
+              <div class="set-row"><div><div class="set-t">מחיקת כל הנתונים</div><div class="set-s">פעולה בלתי הפיכה. מומלץ להוריד גיבוי לפני.</div></div><div class="ctl"><button class="btn sm danger" id="bkWipe"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-trash"/></svg>מחיקה</button></div></div>
+              <div class="set-row" style="border:none"><div style="width:100%"><div class="set-t">שטח אחסון בדפדפן</div><div class="set-s" id="storeInfo">—</div>
+        <div class="meter"><i id="storeBar" style="width:0%"></i></div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <div class="card-h"><span class="card-t">סנכרון וגיבוי בגיטהאב</span>
+            <span class="tag mute spacer" id="syncState">לא מוגדר</span></div>
+          <div class="card-b">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+              הגיבוי נשמר כקובץ JSON בריפו <b>פרטי</b> שלך, עם היסטוריית גרסאות מלאה. צור טוקן מסוג Fine-grained עם גישה לריפו הזה בלבד והרשאת Contents: Read and write.
+              הטוקן נשמר רק בדפדפן הזה ולא נכלל בקבצי הגיבוי.</p>
+            <div class="form-grid">
+              <div class="field"><label>ריפו <span class="hint">— בפורמט user/repo</span></label><input type="text" id="ghRepo" placeholder="ben111000111/yeynot-data"></div>
+              <div class="field"><label>נתיב הקובץ</label><input type="text" id="ghPath" placeholder="data/backup.json"></div>
+              <div class="field"><label>ענף</label><input type="text" id="ghBranch" placeholder="main"></div>
+              <div class="field"><label>טוקן גישה</label><input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off"></div>
+            </div>
+            <div class="row" style="margin-top:14px">
+              <button class="btn primary" id="ghPushBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-up"/></svg>העלאה לענן</button>
+              <button class="btn" id="ghPullBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-down"/></svg>הורדה מהענן</button>
+              <button class="btn sm" id="ghTestBtn">בדיקת חיבור</button>
+              <button class="btn sm danger" id="ghForget">ניתוק</button>
+            </div>
+            <div class="set-row" style="margin-top:8px"><div><div class="set-t">סנכרון אוטומטי</div>
+              <div class="set-s">בפתיחת המערכת נבדק אם יש בענן גרסה חדשה יותר, ובסגירה מועלה גיבוי אם היו שינויים.</div></div>
+              <div class="ctl"><div class="switch" id="ghAuto"></div></div></div>
+            <div class="set-row" style="border:none"><div><div class="set-t">גיבוי אחרון</div>
+              <div class="set-s" id="ghLast">עוד לא בוצע סנכרון מהמכשיר הזה.</div></div>
+              <div class="ctl"><a class="btn sm" href="#/log">ליומן המלא</a></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="mob-nav" id="mobNav">
+  <button class="mob-btn on" data-view="dash"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-grid"/></svg>בקרה</button>
+  <button class="mob-btn" data-view="products"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bottle"/></svg>יינות</button>
+  <button class="mob-btn" data-view="privateFridge"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-fridge"/></svg>פרטי</button>
+  <button class="mob-btn" data-view="moves"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-swap"/></svg>תנועות</button>
+  <button class="mob-btn" data-view="alerts"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bell"/></svg>התראות<span class="pill" id="mobAlerts" hidden>0</span></button>
+  <button class="mob-btn" data-view="reports"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-chart"/></svg>סיכומים</button>
+  <button class="mob-btn" data-view="log"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-log"/></svg>יומן</button>
+  <button class="mob-btn" data-view="settings"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-gear"/></svg>הגדרות</button>
+</nav>
+
+<div class="veil" id="veil"><div class="modal" id="modal"></div></div>
+<div class="toasts" id="toasts"></div>
+<div id="printArea"></div>
+
+<script>
+"use strict";
+/* ==========================================================
+   מחסן — מערכת ניהול מלאי | קובץ יחיד, ללא תלויות חיצוניות
+   ========================================================== */
+
+const KEY = "wms.v1";
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+const DEF = {
+  products: [], moves: [], rules: [], log: [],
+  settings: { org:"מחסן יינות", currency:"₪", defStd:6, expDays:90, theme:"light",
+    gh: { repo:"", path:"data/backup.json", branch:"main", token:"", auto:true, lastSync:0, lastSha:"", syncedAt:0 } },
+  meta: { created:Date.now(), updated:Date.now(), v:1 }
+};
+
+let DB = structuredClone(DEF);
+let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"table", globalEdit:false };
+
+/* ---------- persistence ---------- */
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    const p = JSON.parse(raw);
+    DB = Object.assign(structuredClone(DEF), p);
+    DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
+    DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{});
+    if(!Array.isArray(DB.log)) DB.log = [];
+  }catch(e){ toast("קובץ הנתונים המקומי פגום. נטענה מערכת ריקה.","err"); }
+}
+let saveT;
+function save(){
+  DB.meta.updated = Date.now();
+  clearTimeout(saveT);
+  saveT = setTimeout(()=>{
+    try{
+      localStorage.setItem(KEY, JSON.stringify(DB));
+      $("#savedTxt").textContent = "נשמר " + new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+    }catch(e){
+      toast("נגמר שטח האחסון בדפדפן — כנראה בגלל תמונות. הורד גיבוי ומחק תמונות של יינות ישנים.","err");
+    }
+  },180);
+}
+
+/* ---------- utils ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const n  = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+const cur = () => DB.settings.currency || "₪";
+const money = v => cur() + n(v).toLocaleString("he-IL",{minimumFractionDigits:0, maximumFractionDigits:2});
+const qty = v => n(v).toLocaleString("he-IL",{maximumFractionDigits:2});
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const iso = d => new Date(d).toISOString().slice(0,10);
+const today = () => iso(Date.now());
+const dShort = d => new Date(d).toLocaleDateString("he-IL",{day:"2-digit",month:"2-digit",year:"2-digit"});
+const dLong  = d => new Date(d).toLocaleString("he-IL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const daysBetween = (a,b) => Math.round((new Date(b)-new Date(a))/864e5);
+const svgIco = id => `<svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
+
+function toast(msg, kind="ok"){
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(()=>{ el.style.transition="opacity .25s, transform .25s"; el.style.opacity="0"; el.style.transform="translateX(20px)"; setTimeout(()=>el.remove(),260); }, 3000);
+}
+
+/* ---------- תמונות ---------- */
+const IMG_MAX = 560, IMG_Q = 0.72;
+function readImage(file, cb){
+  if(!file){ return; }
+  if(!/^image\//.test(file.type)){ toast("אפשר להעלות קובץ תמונה בלבד","err"); return; }
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const sc = Math.min(1, IMG_MAX/Math.max(w,h));
+      w = Math.max(1,Math.round(w*sc)); h = Math.max(1,Math.round(h*sc));
+      const c = document.createElement("canvas"); c.width=w; c.height=h;
+      const x = c.getContext("2d");
+      x.fillStyle="#ffffff"; x.fillRect(0,0,w,h);
+      x.drawImage(img,0,0,w,h);
+      cb(c.toDataURL("image/jpeg", IMG_Q));
+    };
+    img.onerror = ()=>toast("לא הצלחתי לפתוח את התמונה","err");
+    img.src = fr.result;
+  };
+  fr.onerror = ()=>toast("קריאת הקובץ נכשלה","err");
+  fr.readAsDataURL(file);
+}
+function thumb(p, cls="thumb"){
+  return p.img ? `<img class="${cls}" src="${p.img}" alt="${esc(p.name)}" loading="lazy">`
+               : `<div class="${cls}-ph">${svgIco("i-bottle")}</div>`;
+}
+const wineLine = p => [p.winery, p.vintage, p.varietal].filter(Boolean).join(" · ");
+
+const MOVE = {
+  in:     {label:"כניסה",       sign:+1, tag:"ok"},
+  out:    {label:"יציאה",       sign:-1, tag:"warn"},
+  sale:   {label:"מכירה",       sign:-1, tag:"info"},
+  adjust: {label:"ספירת מלאי",  sign: 0, tag:"mute"}
+};
+
+/* ---------- product status vs. standard ---------- */
+function status(p){
+  const q = n(p.qty), s = n(p.std), mx = n(p.max);
+  if(q <= 0)              return {k:"crit", label:"אזל", tag:"crit"};
+  if(s > 0 && q < s)      return {k:"warn", label:"מתחת לתקן", tag:"warn"};
+  if(mx > 0 && q > mx)    return {k:"over", label:"מעל המקסימום", tag:"info"};
+  return {k:"ok", label:"תקין", tag:"ok"};
+}
+function gauge(p){
+  const q = n(p.qty), s = n(p.std), mx = n(p.max);
+  const scale = Math.max(q, s*1.6, mx, 1);
+  const pct = Math.min(100, q/scale*100);
+  const notch = s>0 ? Math.min(100, s/scale*100) : null;
+  const st = status(p);
+  const cls = st.k==="crit" ? "crit" : st.k==="warn" ? "warn" : "";
+  return `<div class="gauge-wrap">
+    <div class="gauge">
+      <span class="gauge-fill ${cls}" style="width:${pct}%"></span>
+      ${notch!==null ? `<i class="gauge-notch" style="inset-inline-start:${notch}%" title="תקן: ${qty(s)}"></i>` : ""}
+    </div>
+    <div class="gauge-meta"><span>${qty(q)} ${esc(p.unit||"")}</span><span>תקן ${qty(s)}</span></div>
+  </div>`;
+}
+
+/* ---------- alerts engine ---------- */
+const FIELDS = {
+  qty:      {label:"כמות במלאי",        get:p=>n(p.qty)},
+  std:      {label:"פער מהתקן",         get:p=>n(p.qty)-n(p.std)},
+  pctStd:   {label:"אחוז מהתקן",        get:p=>n(p.std)>0 ? n(p.qty)/n(p.std)*100 : 999},
+  value:    {label:"ערך מלאי",          get:p=>n(p.qty)*n(p.cost)},
+  expiry:   {label:"ימים לסוף חלון השתייה", get:p=>p.expiry ? daysBetween(today(), p.expiry) : 99999}
+};
+const OPS = { lt:{label:"קטן מ־",f:(a,b)=>a<b}, lte:{label:"קטן או שווה",f:(a,b)=>a<=b}, gt:{label:"גדול מ־",f:(a,b)=>a>b}, gte:{label:"גדול או שווה",f:(a,b)=>a>=b}, eq:{label:"שווה ל־",f:(a,b)=>a===b} };
+
+function defaultRules(){
+  return [
+    {id:uid(), name:"אזל מהמלאי",       field:"qty",   op:"lte", val:0,  sev:"crit", scope:"", on:true},
+    {id:uid(), name:"ירידה מתחת לתקן",   field:"pctStd", op:"lt",  val:100,sev:"warn", scope:"", on:true},
+    {id:uid(), name:"חלון השתייה מסתיים",  field:"expiry", op:"lte", val:90, sev:"warn", scope:"", on:true}
+  ];
+}
+function evalAlerts(){
+  const out = [];
+  const activeProducts = DB.products.filter(p=>!p.isPrivate);
+  for(const r of DB.rules){
+    if(!r.on) continue;
+    const F = FIELDS[r.field], O = OPS[r.op];
+    if(!F || !O) continue;
+    for(const p of activeProducts){
+      if(r.scope && p.cat !== r.scope) continue;
+      if(r.field==="expiry" && !p.expiry) continue;
+      const v = F.get(p);
+      if(O.f(v, n(r.val))){
+        out.push({ rule:r, p, val:v,
+          text:`${p.name} — ${F.label}: ${r.field==="pctStd" ? Math.round(v)+"%" : qty(v)}`,
+          sub:`${r.name} · ${O.label} ${qty(r.val)}${r.field==="pctStd"?"%":""} · מק״ט ${p.sku||"—"}` });
+      }
+    }
+  }
+  const order = {crit:0, warn:1, info:2};
+  return out.sort((a,b)=> (order[a.rule.sev]-order[b.rule.sev]) || a.p.name.localeCompare(b.p.name,"he"));
+}
+
+/* ---------- stats ---------- */
+function movesIn(from, to, allowPrivate=false){
+  const f = new Date(from+"T00:00:00").getTime(), t = new Date(to+"T23:59:59").getTime();
+  return DB.moves.filter(m => { 
+    const x = new Date(m.date).getTime(); 
+    if(x < f || x > t) return false;
+    if(!allowPrivate){
+      const p = DB.products.find(prod=>prod.id===m.pid);
+      if(p && p.isPrivate) return false;
+    }
+    return true;
+  });
+}
+function statsFor(from, to, allowPrivate=false){
+  const ms = movesIn(from, to, allowPrivate);
+  const perProduct = new Map();
+  let revenue=0, cogs=0, unitsSold=0, unitsIn=0, unitsOut=0;
+  for(const m of ms){
+    const p = DB.products.find(x=>x.id===m.pid);
+    const key = m.pid;
+    if(!perProduct.has(key)) perProduct.set(key, {p, name:p?p.name:"(מוצר שנמחק)", sku:p?p.sku:"", in:0, out:0, sold:0, rev:0, cost:0});
+    const row = perProduct.get(key);
+    const q = n(m.qty);
+    if(m.type==="in"){ row.in += q; unitsIn += q; }
+    else if(m.type==="out"){ row.out += q; unitsOut += q; }
+    else if(m.type==="sale"){
+      const unitPrice = m.price!=null && m.price!=="" ? n(m.price) : (p?n(p.price):0);
+      const unitCost  = p ? n(p.cost) : 0;
+      row.sold += q; row.out += q; row.rev += q*unitPrice; row.cost += q*unitCost;
+      revenue += q*unitPrice; cogs += q*unitCost; unitsSold += q; unitsOut += q;
+    }
+  }
+  const rows = Array.from(perProduct.values()).sort((a,b)=>b.rev-a.rev || b.sold-a.sold);
+  const targetProducts = DB.products.filter(p=>allowPrivate || !p.isPrivate);
+  const stockValue = targetProducts.reduce((s,p)=>s+n(p.qty)*n(p.cost),0);
+  const retailValue= targetProducts.reduce((s,p)=>s+n(p.qty)*n(p.price),0);
+  return {ms, rows, revenue, cogs, profit:revenue-cogs, unitsSold, unitsIn, unitsOut, stockValue, retailValue};
+}
+function dailySeries(from, to, allowPrivate=false){
+  const days = [];
+  let d = new Date(from+"T00:00:00");
+  const end = new Date(to+"T00:00:00");
+  let guard = 0;
+  while(d <= end && guard++ < 400){ days.push(iso(d)); d.setDate(d.getDate()+1); }
+  const rev = {}, sold = {}, inn = {};
+  days.forEach(k=>{ rev[k]=0; sold[k]=0; inn[k]=0; });
+  for(const m of movesIn(from, to, allowPrivate)){
+    const k = iso(m.date);
+    if(!(k in rev)) continue;
+    const p = DB.products.find(x=>x.id===m.pid);
+    if(m.type==="sale"){
+      const up = m.price!=null && m.price!=="" ? n(m.price) : (p?n(p.price):0);
+      rev[k] += n(m.qty)*up; sold[k] += n(m.qty);
+    } else if(m.type==="in"){ inn[k] += n(m.qty); }
+  }
+  return {days, rev, sold, inn};
+}
+</script>
+
+<script>
+/* ==========================================================
+   גרפים — SVG מקומי, ללא ספריות
+   ========================================================== */
+const CV = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+
+function chartBars(host, {labels, series, yFmt=(v=>qty(v)), maxLabels=14}){
+  const W=640, H=232, PL=8, PR=52, PT=14, PB=28;
+  const plotW = W-PL-PR, plotH = H-PT-PB;
+  const all = series.flatMap(s=>s.values);
+  const max = Math.max(1, ...all);
+  const nice = Math.pow(10, Math.floor(Math.log10(max)));
+  const top = Math.ceil(max/nice*2)/2*nice || 1;
+  const step = plotW/Math.max(labels.length,1);
+  const bw = Math.max(2, (step*0.62)/series.length);
+  let g = "";
+  for(let i=0;i<=4;i++){
+    const y = PT + plotH - (plotH*i/4);
+    g += `<line class="grid-l" x1="${PL}" y1="${y}" x2="${PL+plotW}" y2="${y}"/>
+          <text x="${W-4}" y="${y+3.5}" text-anchor="end">${yFmt(top*i/4)}</text>`;
+  }
+  let bars = "";
+  labels.forEach((lb,i)=>{
+    const xCenter = PL + plotW - (i+0.5)*step;
+    series.forEach((s,si)=>{
+      const v = s.values[i]||0;
+      const h = Math.max(v>0?1.5:0, plotH*(v/top));
+      const x = xCenter - (series.length*bw)/2 + si*bw;
+      bars += `<rect class="bar" x="${x.toFixed(1)}" y="${(PT+plotH-h).toFixed(1)}" width="${(bw-1.5).toFixed(1)}" height="${h.toFixed(1)}" rx="2" style="fill:${s.color}"><title>${esc(lb)} · ${esc(s.name)}: ${yFmt(v)}</title></rect>`;
+    });
+  });
+  const every = Math.ceil(labels.length/maxLabels);
+  let xl = "";
+  labels.forEach((lb,i)=>{ if(i%every) return;
+    const x = PL + plotW - (i+0.5)*step;
+    xl += `<text x="${x.toFixed(1)}" y="${H-9}" text-anchor="middle">${esc(lb)}</text>`;
+  });
+  host.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}">${g}${bars}${xl}</svg>` +
+    `<div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`;
+}
+
+function chartHBars(host, {rows, fmt=(v=>qty(v)), color}){
+  if(!rows.length){ host.innerHTML = emptyBox("אין נתונים בטווח שנבחר","רשום תנועות מכירה כדי לראות כאן דירוג."); return; }
+  const LW=132, W=640, rowH=30, PT=6;
+  const H = PT + rows.length*rowH + 6;
+  const max = Math.max(1, ...rows.map(r=>r.v));
+  const barArea = W-LW-58;
+  let out = "";
+  rows.forEach((r,i)=>{
+    const y = PT + i*rowH;
+    const len = Math.max(2, barArea*(r.v/max));
+    const x = (W-LW) - len;
+    out += `<text x="${W-4}" y="${y+18}" text-anchor="end" style="fill:var(--ink);font-size:11.5px">${esc(r.label.slice(0,20))}</text>
+            <rect class="bar" x="${x.toFixed(1)}" y="${y+6}" width="${len.toFixed(1)}" height="15" rx="3" style="fill:${color}"><title>${esc(r.label)}: ${fmt(r.v)}</title></rect>
+            <text x="${(x-6).toFixed(1)}" y="${y+18}" text-anchor="end">${fmt(r.v)}</text>`;
+  });
+  host.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}">${out}</svg>`;
+}
+
+function emptyBox(t, s, action=""){
+  return `<div class="empty"><div class="empty-i">${svgIco("i-bottle")}</div><div class="empty-t">${esc(t)}</div><div class="empty-s">${esc(s)}</div>${action?`<div style="margin-top:14px">${action}</div>`:""}</div>`;
+}
+
+/* ==========================================================
+   תצוגות
+   ========================================================== */
+const PAGES = {
+  dash:          ["לוח בקרה","תמונת מצב של המרתף והמחסן"],
+  product:       ["כרטיס יין","כל הפרטים, המלאי וההיסטוריה"],
+  products:      ["יינות המחסן","יקבים, בצירים ומלאי מול תקן"],
+  privateFridge: ["מקרר פרטי","יינות לשימוש אישי — ללא השפעה על המחסן הכללי"],
+  moves:         ["תנועות מלאי","קבלות, משיכות, מכירות וספירות"],
+  alerts:        ["התראות וכללים","מה דורש טיפול ומתי להתריע"],
+  reports:       ["סיכומים","סטטיסטיקה לפי מוצר וטווח תאריכים"],
+  log:           ["יומן פעילות","כל פעולה שבוצעה במערכת"],
+  settings:      ["הגדרות","העדפות, גיבוי ושחזור"]
+};
+const ROUTES = ["dash","products","privateFridge","moves","alerts","reports","log","settings"];
+let routing = false;
+function setHash(h){
+  if(location.hash === h) return;
+  routing = true;
+  location.hash = h;
+  setTimeout(()=>routing = false, 40);
+}
+function shareLink(hash){
+  const url = location.href.split("#")[0] + (hash || location.hash || "#/"+ui.view);
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(url).then(()=>toast("הקישור הועתק — אפשר לשלוח","ok"), ()=>linkModal(url));
+  } else linkModal(url);
+}
+function linkModal(url){
+  openModal(`<div class="modal-h"><div class="modal-t">קישור לדף הזה</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-b"><p style="font-size:13px;color:var(--muted);margin-bottom:12px">העתק את הכתובת ושלח אותה. הקישור נפתח ישירות בדף הזה.</p>
+    <div class="link-box"><input type="text" id="lkUrl" value="${esc(url)}" readonly><button class="btn primary" id="lkCopy">העתקה</button></div></div>`);
+  const i = $("#lkUrl");
+  i.onclick = ()=>i.select();
+  i.select();
+  $("#lkCopy").onclick = ()=>{ i.select(); try{ document.execCommand("copy"); toast("הקישור הועתק","ok"); }catch(e){ toast("העתק ידנית מהשדה","warn"); } };
+}
+function route(){
+  if(routing) return;
+  const raw = (location.hash||"").replace(/^#\/?/, "");
+  if(!raw) return go("dash");
+  const [path, qs] = raw.split("?");
+  const parts = path.split("/").filter(Boolean).map(decodeURIComponent);
+  const q = new URLSearchParams(qs||"");
+  if(parts[0]==="product" || parts[0]==="wine"){ return openProductPage(parts[1]); }
+  if(ROUTES.includes(parts[0])){
+    if(parts[0]==="reports"){ if(q.get("from")) $("#rFrom").value = q.get("from"); if(q.get("to")) $("#rTo").value = q.get("to"); }
+    if(parts[0]==="products"){
+      $("#fStatus").value = q.get("status") || "";
+      ui.pendingCat = q.get("cat") || "";
+      if(q.get("view")) ui.pv = q.get("view");
+    }
+    if(q.get("q")!=null){ $("#globalSearch").value = q.get("q"); ui.q = q.get("q"); }
+    renderProducts(); renderPrivateFridge(); renderMoves();
+    return go(parts[0]);
+  }
+  go("dash");
+}
+addEventListener("hashchange", route);
+
+function go(v){
+  ui.view = v;
+  $$(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v));
+  const navV = v==="product" ? "products" : v;
+  $$("[data-view]").forEach(b=>b.classList.toggle("on", b.dataset.view===navV));
+  $("#pgTitle").textContent = PAGES[v][0];
+  $("#pgSub").textContent   = PAGES[v][1];
+  $(".scroll").scrollTop = 0;
+  if(v==="reports") renderReports();
+  else if(v==="log"){ if(typeof renderLog==="function") renderLog(); setHash("#/log"); }
+  else if(v==="products") renderProducts();
+  else if(v==="privateFridge") renderPrivateFridge();
+  else if(v!=="product") setHash("#/"+v);
+}
+
+/* ---------- KPI + dashboard ---------- */
+function renderDash(){
+  const activeProducts = DB.products.filter(p=>!p.isPrivate);
+  const al = evalAlerts();
+  const crit = al.filter(a=>a.rule.sev==="crit").length;
+  const below = activeProducts.filter(p=>status(p).k==="warn").length;
+  const value = activeProducts.reduce((s,p)=>s+n(p.qty)*n(p.cost),0);
+  const from = iso(Date.now()-29*864e5), to = today();
+  const st = statsFor(from,to,false);
+
+  const repHref = `#/reports?from=${from}&to=${to}`;
+  $("#kpis").innerHTML = [
+    ["יינות במחסן", activeProducts.length.toLocaleString("he-IL"), "פריטים מנוהלים", "", "#/products"],
+    ["ערך המלאי", money(value), "לפי מחיר עלות", "", repHref],
+    ["מתחת לתקן", below, below? "לפתיחת רשימת החוסרים" : "כל היינות בתקן", below?"k-warn":"k-ok", "#/products?status=warn"],
+    ["אזלו מהמלאי", crit, crit? "טפל בהקדם" : "אין חוסרים", crit?"k-crit":"k-ok", "#/products?status=crit"],
+    ["הכנסות (30 ימים)", money(st.revenue), `${qty(st.unitsSold)} בקבוקים נמכרו`, "", repHref],
+    ["רווח גולמי (30 ימים)", money(st.profit), st.revenue>0 ? Math.round(st.profit/st.revenue*100)+"% שיעור רווח" : "אין מכירות", "k-ok", repHref]
+  ].map(([l,v,f,c,h])=>`<a class="kpi ${c}" href="${h}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></a>`).join("");
+
+  const f14 = iso(Date.now()-13*864e5);
+  const ser = dailySeries(f14, to, false);
+  $("#dashRange").textContent = dShort(f14) + " – " + dShort(to);
+  chartBars($("#dashChart"), {
+    labels: ser.days.map(d=>dShort(d).slice(0,5)),
+    series: [
+      {name:"נכנס", color:CV("--brand"), values: ser.days.map(d=>ser.inn[d])},
+      {name:"נמכר", color:CV("--warn"),  values: ser.days.map(d=>ser.sold[d])}
+    ]
+  });
+
+  $("#dashAlerts").innerHTML = al.length
+    ? al.slice(0,6).map(a=>alertRow(a)).join("")
+    : emptyBox("אין התראות פתוחות","כל הפריטים עומדים בכללים שהגדרת.");
+
+  const gaps = activeProducts.filter(p=>n(p.std)>0).map(p=>({p, gap:n(p.std)-n(p.qty)}))
+    .filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,6);
+  $("#dashGapTbl").innerHTML = gaps.length ? `
+    <thead><tr><th class="no-sort">יין</th><th class="no-sort">מצב מול תקן</th><th class="no-sort">חסר להשלמה</th></tr></thead>
+    <tbody>${gaps.map(({p,gap})=>`<tr data-nav="#/product/${encodeURIComponent(p.sku||p.id)}">
+      <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a><div class="t-sku">${esc(wineLine(p)||p.sku||"—")}</div></div></div></td>
+      <td style="min-width:130px">${gauge(p)}</td>
+      <td><span class="tag warn num">${qty(gap)} ${esc(p.unit||"")}</span></td></tr>`).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyBox("כל היינות מעל התקן","אין פערים להשלמה כרגע.")}</td></tr></tbody>`;
+
+  const recent = [...DB.moves].filter(m=>{
+    const p = DB.products.find(x=>x.id===m.pid);
+    return !p || !p.isPrivate;
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+
+  $("#dashMovesTbl").innerHTML = recent.length ? `
+    <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">יין</th><th class="no-sort">סוג</th><th class="no-sort">כמות</th></tr></thead>
+    <tbody>${recent.map(m=>{ const p = DB.products.find(x=>x.id===m.pid); const T = MOVE[m.type];
+      return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}><td class="num" style="font-size:12px">${dShort(m.date)}</td>
+        <td>${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a>`:`<span class="t-name">(נמחק)</span>`}</td>
+        <td><span class="tag ${T.tag}">${T.label}</span></td>
+        <td class="num">${m.type==="adjust"?"→ ":""}${qty(m.qty)}</td></tr>`;}).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyBox("עוד לא נרשמו תנועות","כל כניסה, יציאה או מכירה תופיע כאן.")}</td></tr></tbody>`;
+}
+function alertRow(a, link=true){
+  const sev = a.rule.sev;
+  const ico = sev==="crit" ? "i-alert" : sev==="warn" ? "i-bell" : "i-clock";
+  const inner = `<div class="alert-i ${sev}">${svgIco(ico)}</div>
+    <div style="min-width:0"><div class="alert-t">${esc(a.text)}</div><div class="alert-s">${esc(a.sub)}</div></div>
+    ${link?`<span class="chev">${svgIco("i-chev")}</span>`:""}`;
+  return link
+    ? `<a class="alert-row" href="#/product/${encodeURIComponent(a.p.sku||a.p.id)}">${inner}</a>`
+    : `<div class="alert-row">${inner}</div>`;
+}
+
+/* ---------- products ---------- */
+function filteredProducts(isPrivateFilter=false){
+  const q = ui.q.trim().toLowerCase();
+  const c = $("#fCat")?$("#fCat").value:"", s = $("#fStatus")?$("#fStatus").value:"";
+  let list = DB.products.filter(p=>{
+    if(!!p.isPrivate !== isPrivateFilter) return false;
+    if(c && p.cat!==c) return false;
+    if(s && status(p).k!==s) return false;
+    if(q && !(`${p.name} ${p.sku} ${p.cat} ${p.supplier} ${p.loc} ${p.winery||""} ${p.varietal||""} ${p.vintage||""} ${p.region||""}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const {k,d} = ui.sortP;
+  list.sort((a,b)=>{
+    let x=a[k], y=b[k];
+    if(k==="value"){ x=n(a.qty)*n(a.cost); y=n(b.qty)*n(b.cost); }
+    if(typeof x==="string" || typeof y==="string") return String(x??"").localeCompare(String(y??""),"he")*d;
+    return ((n(x))-(n(y)))*d;
+  });
+  return list;
+}
+function renderProducts(){
+  const cats = [...new Set(DB.products.filter(p=>!p.isPrivate).map(p=>p.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const want = (ui.pendingCat!=null) ? ui.pendingCat : $("#fCat").value;
+  ui.pendingCat = null;
+  $("#fCat").innerHTML = `<option value="">כל סוגי היין</option>` + cats.map(c=>`<option ${c===want?"selected":""}>${esc(c)}</option>`).join("");
+  const list = filteredProducts(false);
+  const cols = [["name","יין",""],["cat","סוג","c-hide-s"],["vintage","בציר","c-hide-m"],["qty","מלאי מול תקן",""],["status","סטטוס",""],
+    ["cost","עלות","c-hide-m"],["price","מכירה",""],["value","ערך","c-hide-m"],["loc","מיקום","c-hide-m"],["expiry","לשתייה עד","c-hide-s"]];
+  const arw = k => ui.sortP.k===k ? `<span class="arw">${ui.sortP.d>0?"▲":"▼"}</span>` : "";
+  const acts = p => `<button class="mini pos" data-mv="in"  data-id="${p.id}" title="כניסה">${svgIco("i-plus")}</button>
+      <button class="mini neg" data-mv="out" data-id="${p.id}" title="יציאה">${svgIco("i-minus")}</button>
+      <button class="mini" data-edit="${p.id}" title="עריכה">${svgIco("i-edit")}</button>
+      <button class="mini" data-link="${esc(p.sku||p.id)}" title="העתקת קישור ליין הזה">${svgIco("i-link")}</button>`;
+
+  if(ui.view==="products"){
+    const qp = new URLSearchParams();
+    if($("#fStatus").value) qp.set("status", $("#fStatus").value);
+    if($("#fCat").value) qp.set("cat", $("#fCat").value);
+    if(ui.q.trim()) qp.set("q", ui.q.trim());
+    if(ui.pv!=="table") qp.set("view", ui.pv);
+    const qs = qp.toString();
+    setHash("#/products" + (qs?"?"+qs:""));
+  }
+  $("#prodTblWrap").hidden = ui.pv!=="table";
+  $("#prodGal").hidden = ui.pv!=="cards";
+  $$("#viewSeg .seg-b").forEach(b=>b.classList.toggle("on", b.dataset.pv===ui.pv));
+
+  const emptyHTML = emptyBox(DB.products.filter(p=>!p.isPrivate).length?"אין יינות שתואמים לסינון":"המרתף ריק",
+    DB.products.filter(p=>!p.isPrivate).length?"שנה את הסינון או נקה את החיפוש.":"הוסף יין ראשון כדי להתחיל לנהל מלאי מול תקן.",
+    `<button class="btn primary" onclick="productModal()">הוספת יין</button>`);
+
+  $("#prodTbl").innerHTML = list.length ? `
+    <thead><tr>${cols.map(([k,l,c])=>`<th data-sk="${k}" class="${c}">${l} ${arw(k)}</th>`).join("")}<th class="no-sort"></th></tr></thead>
+    <tbody>${list.map(p=>{
+      const st = status(p);
+      const exp = p.expiry ? daysBetween(today(), p.expiry) : null;
+      const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
+      return `<tr data-nav="${href}">
+        <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="${href}">${esc(p.name)}</a>
+          <div class="t-sku">${esc(wineLine(p) || p.sku || "—")}</div></div></div></td>
+        <td class="c-hide-s">${p.cat?`<span class="tag mute">${esc(p.cat)}</span>`:"—"}</td>
+        <td class="num c-hide-m">${esc(p.vintage||"—")}</td>
+        <td style="min-width:140px">${gauge(p)}</td>
+        <td><span class="tag ${st.tag}">${st.label}</span></td>
+        <td class="num c-hide-m">${p.cost?money(p.cost):"—"}</td>
+        <td class="num">${p.price?money(p.price):"—"}</td>
+        <td class="num c-hide-m">${money(n(p.qty)*n(p.cost))}</td>
+        <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(p.loc||"—")}</td>
+        <td class="num c-hide-s" style="font-size:12px">${p.expiry?`<span class="tag ${exp<0?"crit":exp<=n(DB.settings.expDays)?"warn":"mute"}">${dShort(p.expiry)}</span>`:"—"}</td>
+        <td><div class="t-acts">${acts(p)}<button class="mini neg" data-del="${p.id}" title="מחיקה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyHTML}</td></tr></tbody>`;
+
+  $("#prodGal").innerHTML = list.length ? list.map(p=>{
+    const st = status(p);
+    const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
+    return `<article class="gcard" data-nav="${href}">
+      <div class="gph">${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy">`:svgIco("i-bottle")}
+        <span class="tag ${st.tag} gbadge">${st.label}</span></div>
+      <div class="gbody">
+        <div><a class="gname lnk" href="${href}">${esc(p.name)}</a><div class="gmeta">${esc(wineLine(p)||p.sku||"—")}</div></div>
+        ${gauge(p)}
+        <div class="gfoot"><span class="gprice">${p.price?money(p.price):"—"}</span>
+          <span class="gmeta">${esc(p.loc||"")}</span>
+          <span class="t-acts spacer">${acts(p)}</span></div>
+      </div></article>`;}).join("") : emptyHTML;
+}
+
+/* ---------- private fridge ---------- */
+function renderPrivateFridge(){
+  const list = filteredProducts(true);
+  const cols = [["name","יין במקרר הפרטי",""],["vintage","בציר",""],["qty","כמות במלאי",""],["loc","מיקום/מדף",""],["notes","הערות",""]];
+  const acts = p => `<button class="mini pos" data-mv="in"  data-id="${p.id}" title="כניסה">${svgIco("i-plus")}</button>
+      <button class="mini neg" data-mv="out" data-id="${p.id}" title="יציאה">${svgIco("i-minus")}</button>
+      <button class="mini" data-edit="${p.id}" title="עריכה">${svgIco("i-edit")}</button>`;
+
+  const emptyHTML = emptyBox("המקרר הפרטי ריק", "הוסף יינות אישיים שלא יחושבו במלאי ובסיכומים של המחסן הכללי.",
+    `<button class="btn primary" onclick="productModal(null, true)">הוספת יין למקרר הפרטי</button>`);
+
+  $("#privProdTbl").innerHTML = list.length ? `
+    <thead><tr>${cols.map(([k,l])=>`<th class="no-sort">${l}</th>`).join("")}<th class="no-sort"></th></tr></thead>
+    <tbody>${list.map(p=>{
+      const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
+      return `<tr data-nav="${href}">
+        <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="${href}">${esc(p.name)}</a>
+          <div class="t-sku">${esc(wineLine(p) || "פרטי")}</div></div></div></td>
+        <td class="num">${esc(p.vintage||"—")}</td>
+        <td class="num" style="font-weight:700">${qty(p.qty)} ${esc(p.unit||"")}</td>
+        <td style="color:var(--muted);font-size:12.5px">${esc(p.loc||"מקרר פרטי")}</td>
+        <td style="color:var(--muted);font-size:12.5px">${esc(p.notes||"—")}</td>
+        <td><div class="t-acts">${acts(p)}<button class="mini neg" data-del="${p.id}" title="מחיקה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyHTML}</td></tr></tbody>`;
+}
+
+/* ---------- כרטיס יין (עמוד מלא) ---------- */
+function openProductPage(key){
+  const p = findProduct(key);
+  if(!p){ toast("היין המבוקש לא נמצא במחסן הזה","warn"); return go("products"); }
+  go("product");
+  renderProduct(p);
+  setHash("#/product/" + encodeURIComponent(p.sku || p.id));
+}
+function renderProduct(p){
+  ui.pid = p.id;
+  const st = status(p), gap = n(p.std) - n(p.qty);
+  const from = iso(Date.now()-89*864e5), to = today();
+  const mine = DB.moves.filter(m=>m.pid===p.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  let sold=0, rev=0, inn=0, out=0;
+  mine.filter(m=>iso(m.date)>=from && iso(m.date)<=to).forEach(m=>{
+    const q = n(m.qty);
+    if(m.type==="in") inn+=q;
+    else if(m.type==="out") out+=q;
+    else if(m.type==="sale"){ sold+=q; out+=q; rev += q*(m.price!=null&&m.price!==""?n(m.price):n(p.price)); }
+  });
+  const profit = rev - sold*n(p.cost);
+  const alerts = evalAlerts().filter(a=>a.p.id===p.id);
+  const exp = p.expiry ? daysBetween(today(), p.expiry) : null;
+
+  const days = [];
+  for(let i=29;i>=0;i--) days.push(iso(Date.now()-i*864e5));
+  const dIn = {}, dSold = {};
+  days.forEach(k=>{ dIn[k]=0; dSold[k]=0; });
+  mine.forEach(m=>{ const k = iso(m.date); if(!(k in dIn)) return;
+    if(m.type==="in") dIn[k]+=n(m.qty); else if(m.type==="sale") dSold[k]+=n(m.qty); });
+
+  const det = [
+    ["יקב", p.winery], ["בציר", p.vintage], ["זן ענבים", p.varietal], ["סוג", p.cat],
+    ["אזור", p.region], ["נפח", p.vol?n(p.vol)+" מ״ל":""], ["מק״ט", p.sku], ["ספק", p.supplier],
+    ["מיקום", p.loc], ["שיוך", p.isPrivate?"מקרר פרטי (אינו נכלל בסיכומי מחסן)":"מחסן כללי"],
+    ["לשתייה עד", p.expiry?dShort(p.expiry)+(exp!=null?` · ${exp<0?"עבר":"בעוד "+exp+" ימים"}`:""):""]
+  ].filter(([,v])=>v!==""&&v!=null&&v!==undefined);
+
+  $("#prodPage").innerHTML = `
+    <div class="crumb">
+      <a class="lnk" href="${p.isPrivate?'#/privateFridge':'#/products'}">${p.isPrivate?'מקרר פרטי':'יינות'}</a><span>/</span><span style="color:var(--ink)">${esc(p.name)}</span>
+      <span class="spacer"></span>
+      <button class="btn sm" data-link="${esc(p.sku||p.id)}">${svgIco("i-link")}העתקת קישור</button>
+      <button class="btn sm" data-edit="${p.id}">${svgIco("i-edit")}עריכה</button>
+      <button class="btn sm danger" data-del="${p.id}">${svgIco("i-trash")}מחיקה</button>
+    </div>
+
+    <div class="pp">
+      <div class="card"><div class="card-b">
+        ${p.img?`<img class="pp-img" src="${p.img}" alt="${esc(p.name)}">`:`<div class="pp-ph">${svgIco("i-bottle")}</div>`}
+        <div class="row" style="margin-top:12px"><span class="tag ${st.tag}">${st.label}</span>
+          ${p.isPrivate?`<span class="tag info">מקרר פרטי</span>`:""}
+          ${p.cat?`<a class="tag mute lnk" href="#/products?cat=${encodeURIComponent(p.cat)}">${esc(p.cat)}</a>`:""}</div>
+        <div style="margin-top:14px">${gauge(p)}</div>
+        <div class="act-grid">
+          <button class="btn sm" data-mv="in" data-id="${p.id}">${svgIco("i-plus")}כניסה</button>
+          <button class="btn sm" data-mv="out" data-id="${p.id}">${svgIco("i-minus")}יציאה</button>
+          <button class="btn sm primary" data-mvfull="sale" data-id="${p.id}">מכירה</button>
+          <button class="btn sm" data-mvfull="adjust" data-id="${p.id}">ספירה</button>
+        </div>
+      </div></div>
+
+      <div>
+        <div class="card"><div class="card-b">
+          <div class="pp-title">${esc(p.name)}</div>
+          <div class="pp-sub">${esc(wineLine(p) || "ללא פרטי יקב")}</div>
+          <div class="dl">${det.map(([t,v])=>`<div><div class="dl-t">${esc(t)}</div><div class="dl-v">${esc(v)}</div></div>`).join("")}</div>
+          ${p.notes?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
+            <div class="dl-t">הערות</div><div style="font-size:13.5px;margin-top:5px;line-height:1.6">${esc(p.notes)}</div></div>`:""}
+        </div></div>
+
+        <div class="kpis mt">
+          <div class="kpi ${st.k==="crit"?"k-crit":st.k==="warn"?"k-warn":"k-ok"}"><div class="kpi-l">במלאי</div><div class="kpi-v">${qty(p.qty)}</div><div class="kpi-f">${esc(p.unit||"")} · תקן ${qty(p.std)}</div></div>
+          <div class="kpi ${gap>0?"k-warn":""}"><div class="kpi-l">${gap>0?"חסר להשלמת תקן":"עודף מעל התקן"}</div><div class="kpi-v">${qty(Math.abs(gap))}</div><div class="kpi-f">${gap>0?"להזמין מהיקב":"מלאי חופשי"}</div></div>
+          <div class="kpi"><div class="kpi-l">ערך המלאי</div><div class="kpi-v">${money(n(p.qty)*n(p.cost))}</div><div class="kpi-f">שווי מדף ${money(n(p.qty)*n(p.price))}</div></div>
+          <div class="kpi"><div class="kpi-l">נמכר (90 יום)</div><div class="kpi-v">${qty(sold)}</div><div class="kpi-f">${money(rev)} הכנסות</div></div>
+          <div class="kpi ${profit>=0?"k-ok":"k-crit"}"><div class="kpi-l">רווח (90 יום)</div><div class="kpi-v">${money(profit)}</div><div class="kpi-f">${money(n(p.price)-n(p.cost))} לבקבוק</div></div>
+          <div class="kpi"><div class="kpi-l">נכנס / יצא (90 יום)</div><div class="kpi-v">${qty(inn)} / ${qty(out)}</div><div class="kpi-f">${mine.length} תנועות בסך הכל</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid mt g-2">
+      <div class="card"><div class="card-h"><span class="card-t">תנועה ב־30 הימים האחרונים</span></div>
+        <div class="card-b"><div id="ppChart"></div></div></div>
+      <div class="card"><div class="card-h"><span class="card-t">התראות על היין הזה</span><span class="tag ${alerts.length?"warn":"ok"} spacer">${alerts.length}</span></div>
+        ${alerts.length?alerts.map(a=>alertRow(a,false)).join(""):emptyBox("אין התראות","היין הזה עומד בכל הכללים הפעילים.")}</div>
+    </div>
+
+    <div class="card mt"><div class="card-h"><span class="card-t">היסטוריית תנועות</span>
+      <a class="btn sm spacer" href="#/moves">ליומן המלא</a></div>
+      <div class="tbl-wrap">${mine.length?`<table>
+        <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">סוג</th><th class="no-sort">כמות</th>
+          <th class="no-sort c-hide-m">מחיר</th><th class="no-sort c-hide-m">סה״כ</th><th class="no-sort c-hide-s">הערה</th><th class="no-sort"></th></tr></thead>
+        <tbody>${mine.slice(0,60).map(m=>{ const T = MOVE[m.type];
+          const up = m.price!=null&&m.price!==""?n(m.price):(m.type==="sale"?n(p.price):null);
+          return `<tr><td class="num" style="font-size:12px;white-space:nowrap">${dLong(m.date)}</td>
+            <td><span class="tag ${T.tag}">${T.label}</span></td>
+            <td class="num" style="font-weight:600">${m.type==="in"?"+":m.type==="adjust"?"→ ":"−"}${qty(m.qty)}</td>
+            <td class="num c-hide-m">${up!=null?money(up):"—"}</td>
+            <td class="num c-hide-m">${up!=null?money(up*n(m.qty)):"—"}</td>
+            <td class="c-hide-s" style="color:var(--muted);font-size:12.5px">${esc(m.note||"—")}</td>
+            <td><div class="t-acts"><button class="mini neg" data-delmv="${m.id}" title="ביטול התנועה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody></table>`
+        : emptyBox("אין עדיין תנועות ליין הזה","רשום כניסה או מכירה מהכפתורים למעלה.")}</div></div>`;
+
+  chartBars($("#ppChart"), {
+    labels: days.map(d=>dShort(d).slice(0,5)),
+    series: [{name:"נכנס", color:CV("--brand"), values: days.map(d=>dIn[d])},
+             {name:"נמכר", color:CV("--warn"), values: days.map(d=>dSold[d])}]
+  });
+  $("#pgTitle").textContent = p.name;
+  $("#pgSub").textContent = wineLine(p) || "כרטיס יין";
+}
+
+/* ---------- moves ---------- */
+function filteredMoves(){
+  const q = ui.q.trim().toLowerCase();
+  const t = $("#fMoveType").value, f = $("#fMoveFrom").value, to = $("#fMoveTo").value;
+  let list = DB.moves.filter(m=>{
+    if(t && m.type!==t) return false;
+    if(f && iso(m.date) < f) return false;
+    if(to && iso(m.date) > to) return false;
+    if(q){ const p = DB.products.find(x=>x.id===m.pid);
+      if(!(`${p?p.name:""} ${p?p.sku:""} ${m.note||""}`.toLowerCase().includes(q))) return false; }
+    return true;
+  });
+  const {k,d} = ui.sortM;
+  list.sort((a,b)=> k==="date" ? (new Date(a.date)-new Date(b.date))*d : (n(a[k])-n(b[k]))*d);
+  return list;
+}
+function renderMoves(){
+  const list = filteredMoves();
+  $("#movesTbl").innerHTML = list.length ? `
+    <thead><tr><th data-mk="date">תאריך ${ui.sortM.k==="date"?`<span class="arw">${ui.sortM.d>0?"▲":"▼"}</span>`:""}</th>
+      <th class="no-sort">יין</th><th class="no-sort">סוג</th><th data-mk="qty">כמות</th>
+      <th class="no-sort c-hide-m">מחיר ליחידה</th><th class="no-sort c-hide-m">סה״כ</th><th class="no-sort c-hide-s">הערה</th><th class="no-sort"></th></tr></thead>
+    <tbody>${list.slice(0,400).map(m=>{
+      const p = DB.products.find(x=>x.id===m.pid), T = MOVE[m.type];
+      const up = m.price!=null && m.price!=="" ? n(m.price) : (m.type==="sale" && p ? n(p.price) : null);
+      return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}>
+        <td class="num" style="font-size:12px;white-space:nowrap">${dLong(m.date)}</td>
+        <td><div class="t-cell">${p?thumb(p):""}<div style="min-width:0">${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a>`:`<span class="t-name">(יין שנמחק)</span>`}<div class="t-sku">${esc(p?wineLine(p)||(p.isPrivate?"מקרר פרטי":p.sku)||"":"")}</div></div></div></td>
+        <td><span class="tag ${T.tag}">${T.label}</span></td>
+        <td class="num" style="font-weight:600">${m.type==="in"?"+":m.type==="adjust"?"→ ":"−"}${qty(m.qty)}</td>
+        <td class="num c-hide-m">${up!=null?money(up):"—"}</td>
+        <td class="num c-hide-m">${up!=null?money(up*n(m.qty)):"—"}</td>
+        <td class="c-hide-s" style="color:var(--muted);font-size:12.5px;max-width:200px">${esc(m.note||"—")}</td>
+        <td><div class="t-acts"><button class="mini neg" data-delmv="${m.id}" title="ביטול התנועה">${svgIco("i-trash")}</button></div></td>
+      </tr>`;}).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyBox("אין תנועות להצגה", DB.moves.length?"נסה טווח תאריכים או סוג תנועה אחר.":"כל כניסה, יציאה, מכירה או ספירה שתרשום תופיע כאן.",
+      `<button class="btn primary" onclick="moveModal()">רישום תנועה</button>`)}</td></tr></tbody>`;
+}
+
+/* ---------- alerts view ---------- */
+function renderAlerts(){
+  const al = evalAlerts();
+  $("#alertCount").textContent = al.length + " פתוחות";
+  $("#alertList").innerHTML = al.length ? al.map(a=>alertRow(a)).join("")
+    : emptyBox("שקט במרתף","אף יין לא עומד בתנאי של כלל פעיל.");
+  const badge = al.length;
+  [["#navAlerts"],["#mobAlerts"]].forEach(([s])=>{ const el=$(s); if(!el) return; el.hidden = !badge; el.textContent = badge>99?"99+":badge; });
+
+  $("#ruleList").innerHTML = DB.rules.length ? DB.rules.map(r=>{
+    const hits = al.filter(a=>a.rule.id===r.id).length;
+    return `<div class="alert-row">
+      <div class="alert-i ${r.sev}">${svgIco(r.sev==="crit"?"i-alert":"i-bell")}</div>
+      <div style="min-width:0"><div class="alert-t">${esc(r.name)}</div>
+        <div class="alert-s">${FIELDS[r.field]?.label||r.field} ${OPS[r.op]?.label||r.op} ${qty(r.val)}${r.scope?` · רק ב־${esc(r.scope)}`:""} · ${hits} התאמות</div></div>
+      <div class="t-acts spacer">
+        <button class="mini" data-ruleon="${r.id}" title="${r.on?"השבתה":"הפעלה"}">${r.on?svgIco("i-bell"):svgIco("i-x")}</button>
+        <button class="mini" data-ruleedit="${r.id}" title="עריכה">${svgIco("i-edit")}</button>
+        <button class="mini neg" data-ruledel="${r.id}" title="מחיקה">${svgIco("i-trash")}</button>
+      </div></div>`;}).join("")
+    : emptyBox("אין כללים מוגדרים","כלל מגדיר מתי המערכת מתריעה — למשל כשכמות בקבוקים יורדת מתחת לתקן.",
+      `<button class="btn primary" onclick="ruleModal()">כלל ראשון</button>`);
+}
+</script>
+
+<script>
+/* ==========================================================
+   סיכומים
+   ========================================================== */
+function repRange(){
+  let f = $("#rFrom").value, t = $("#rTo").value;
+  if(!f){ f = iso(Date.now()-29*864e5); $("#rFrom").value = f; }
+  if(!t){ t = today(); $("#rTo").value = t; }
+  if(f>t){ [f,t]=[t,f]; $("#rFrom").value=f; $("#rTo").value=t; }
+  return {f,t};
+}
+function renderReports(){
+  const {f,t} = repRange();
+  const allowPrivate = $("#incPrivate") ? $("#incPrivate").checked : false;
+  const st = statsFor(f,t, allowPrivate);
+  $("#repRangeTag").textContent = dShort(f) + " – " + dShort(t) + " · " + (daysBetween(f,t)+1) + " ימים" + (allowPrivate ? " (כולל מקרר פרטי)" : "");
+  if(ui.view==="reports") setHash(`#/reports?from=${f}&to=${t}`);
+  $("#repKpis").innerHTML = [
+    ["הכנסות", money(st.revenue), `${qty(st.unitsSold)} יחידות`, ""],
+    ["עלות המכר", money(st.cogs), "לפי מחיר עלות", ""],
+    ["רווח גולמי", money(st.profit), st.revenue>0?Math.round(st.profit/st.revenue*100)+"% שיעור":"—", st.profit>=0?"k-ok":"k-crit"],
+    ["נכנס למחסן", qty(st.unitsIn), "יחידות שהתקבלו", ""],
+    ["יצא מהמחסן", qty(st.unitsOut), "מכירות ומשיכות", "k-warn"],
+    ["ערך מלאי נוכחי", money(st.stockValue), `שווי מדף ${money(st.retailValue)}`, ""]
+  ].map(([l,v,fo,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${fo}</div></div>`).join("");
+
+  const ser = dailySeries(f,t, allowPrivate);
+  chartBars($("#repChart1"), {
+    labels: ser.days.map(d=>dShort(d).slice(0,5)),
+    series: [
+      {name:"הכנסה יומית", color:CV("--brand"), values: ser.days.map(d=>ser.rev[d])},
+      {name:"יחידות שנמכרו", color:CV("--warn"), values: ser.days.map(d=>ser.sold[d])}
+    ], yFmt: v => v>=1000 ? (v/1000).toFixed(1)+"k" : Math.round(v)
+  });
+  chartHBars($("#repChart2"), {
+    rows: st.rows.filter(r=>r.rev>0).slice(0,8).map(r=>({label:r.name, v:r.rev})),
+    fmt: money, color: CV("--brand")
+  });
+  const byType = new Map(), stockByType = new Map();
+  st.rows.forEach(r=>{ const c = r.p?.cat || "ללא סוג"; byType.set(c, (byType.get(c)||0) + r.rev); });
+  DB.products.filter(p=>allowPrivate || !p.isPrivate).forEach(p=>{ const c = p.cat || "ללא סוג"; stockByType.set(c, (stockByType.get(c)||0) + n(p.qty)*n(p.cost)); });
+  chartHBars($("#repChart3"), {
+    rows: [...byType].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([label,v])=>({label,v})),
+    fmt: money, color: CV("--brand") });
+  chartHBars($("#repChart4"), {
+    rows: [...stockByType].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([label,v])=>({label,v})),
+    fmt: money, color: CV("--warn") });
+
+  $("#repTbl").innerHTML = st.rows.length ? `
+    <thead><tr><th class="no-sort">יין</th><th class="no-sort c-hide-s">מק״ט</th><th class="no-sort c-hide-m">נכנס</th><th class="no-sort c-hide-m">יצא</th>
+    <th class="no-sort">נמכר</th><th class="no-sort">הכנסה</th><th class="no-sort c-hide-m">עלות</th><th class="no-sort">רווח</th>
+    <th class="no-sort">מלאי כעת</th><th class="no-sort">סטטוס</th></tr></thead>
+    <tbody>${st.rows.map(r=>{
+      const p = r.p, s = p?status(p):null;
+      return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}><td><div class="t-cell">${p?thumb(p):""}<div style="min-width:0">${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(r.name)}</a>`:`<span class="t-name">${esc(r.name)}</span>`}<div class="t-sku">${p?esc(wineLine(p)):""}</div></div></div></td><td class="t-sku c-hide-s">${esc(r.sku||"—")}</td>
+        <td class="num c-hide-m">${qty(r.in)}</td><td class="num c-hide-m">${qty(r.out)}</td><td class="num">${qty(r.sold)}</td>
+        <td class="num">${money(r.rev)}</td><td class="num c-hide-m">${money(r.cost)}</td>
+        <td class="num" style="color:${r.rev-r.cost>=0?"var(--ok)":"var(--crit)"};font-weight:600">${money(r.rev-r.cost)}</td>
+        <td class="num">${p?qty(p.qty):"—"}</td>
+        <td>${s?`<span class="tag ${s.tag}">${s.label}</span>`:"—"}</td></tr>`;}).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyBox("אין תנועות בטווח הזה","בחר טווח תאריכים אחר או רשום תנועות חדשות.")}</td></tr></tbody>`;
+}
+
+/* ==========================================================
+   ייצוא: אקסל, CSV, PDF
+   ========================================================== */
+function dl(content, name, mime){
+  const bom = mime.includes("json") ? "" : "\uFEFF";
+  const blob = new Blob([bom+content], {type:mime+";charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 300);
+}
+function toXLS(title, head, rows, name){
+  const html = `<html dir="rtl"><head><meta charset="utf-8">
+  <style>table{border-collapse:collapse;font-family:Arial}th{background:#F6EAF0;border:1px solid #b9a;padding:6px;font-size:12px}
+  td{border:1px solid #ccd;padding:5px;font-size:12px;mso-number-format:"General"}h2{font-family:Arial}</style></head>
+  <body><h2>${esc(title)}</h2><p style="font-family:Arial;font-size:11px;color:#666">${esc(DB.settings.org)} · הופק ב־${dLong(Date.now())}</p>
+  <table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`;
+  dl(html, name+".xls", "application/vnd.ms-excel");
+  toast("קובץ האקסל ירד למכשיר","ok");
+}
+function toCSV(head, rows, name){
+  const q = v => `"${String(v??"").replace(/"/g,'""')}"`;
+  dl([head.map(q).join(","), ...rows.map(r=>r.map(q).join(","))].join("\r\n"), name+".csv", "text/csv");
+  toast("קובץ ה־CSV ירד למכשיר","ok");
+}
+function prodRows(){
+  return filteredProducts(false).map(p=>[p.sku||"", p.name, p.winery||"", p.vintage||"", p.varietal||"", p.cat||"", p.region||"",
+    n(p.vol)||"", p.unit||"", n(p.qty), n(p.std), n(p.max)||"", n(p.cost), n(p.price), (n(p.qty)*n(p.cost)).toFixed(2),
+    p.loc||"", p.supplier||"", p.expiry||"", status(p).label, p.img?"יש":"אין", p.notes||""]);
+}
+const PROD_HEAD = ["מק״ט","שם היין","יקב","בציר","זן","סוג","אזור","נפח (מ״ל)","יחידה","כמות","תקן","מקסימום","מחיר עלות","מחיר מכירה","ערך מלאי","מיקום","ספק","לשתייה עד","סטטוס","תמונה","הערות"];
+function moveRows(){
+  return filteredMoves().map(m=>{ const p = DB.products.find(x=>x.id===m.pid);
+    const up = m.price!=null && m.price!=="" ? n(m.price) : (m.type==="sale"&&p?n(p.price):0);
+    return [dLong(m.date), p?p.sku||"":"", p?p.name:"(נמחק)", p?p.winery||"":"", p?p.vintage||"":"", MOVE[m.type].label, n(m.qty), up||"", (up*n(m.qty)).toFixed(2), m.note||""]; });
+}
+const MOVE_HEAD = ["תאריך ושעה","מק״ט","יין","יקב","בציר","סוג תנועה","כמות","מחיר ליחידה","סה״כ","הערה"];
+
+function printPDF(){
+  const {f,t} = repRange();
+  const allowPrivate = $("#incPrivate") ? $("#incPrivate").checked : false;
+  const st = statsFor(f,t, allowPrivate);
+  const al = evalAlerts();
+  const kpi = (l,v)=>`<div class="p-kpi"><span>${l}</span><b>${v}</b></div>`;
+  const activeProducts = DB.products.filter(p=>allowPrivate || !p.isPrivate);
+  $("#printArea").innerHTML = `
+    <div class="p-head">
+      <div><div class="p-title">${esc(DB.settings.org)}</div><div style="font-size:12px;color:#555">סיכום מלאי יינות ומכירות ${allowPrivate?'(כולל מקרר פרטי)':''}</div></div>
+      <div class="p-meta">טווח הדוח: ${dShort(f)} – ${dShort(t)}<br>הופק: ${dLong(Date.now())}</div>
+    </div>
+    <div class="p-kpis">
+      ${kpi("הכנסות", money(st.revenue))}${kpi("רווח גולמי", money(st.profit))}
+      ${kpi("ערך מלאי", money(st.stockValue))}${kpi("סוגי יין", activeProducts.length)}
+      ${kpi("יחידות שנמכרו", qty(st.unitsSold))}${kpi("נכנס למחסן", qty(st.unitsIn))}
+      ${kpi("מתחת לתקן", activeProducts.filter(p=>status(p).k==="warn").length)}${kpi("אזלו", activeProducts.filter(p=>status(p).k==="crit").length)}
+    </div>
+    ${st.rows.length?`<div class="p-sec"><h3>פירוט לפי מוצר · ${dShort(f)} – ${dShort(t)}</h3>
+      <table><thead><tr><th>יין</th><th>מק״ט</th><th>נכנס</th><th>יצא</th><th>נמכר</th><th>הכנסה</th><th>רווח</th><th>מלאי כעת</th></tr></thead>
+      <tbody>${st.rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.sku||"—")}</td><td>${qty(r.in)}</td><td>${qty(r.out)}</td>
+        <td>${qty(r.sold)}</td><td>${money(r.rev)}</td><td>${money(r.rev-r.cost)}</td><td>${r.p?qty(r.p.qty):"—"}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <div class="p-sec"><h3>מצב מלאי מלא — יינות</h3>
+      <table><thead><tr><th>מק״ט</th><th>יין</th><th>יקב</th><th>בציר</th><th>סוג</th><th>כמות</th><th>תקן</th><th>פער</th><th>ערך</th><th>מיקום</th><th>סטטוס</th></tr></thead>
+      <tbody>${activeProducts.map(p=>`<tr><td>${esc(p.sku||"—")}</td><td>${esc(p.name)}</td><td>${esc(p.winery||"—")}</td><td>${esc(p.vintage||"—")}</td><td>${esc(p.cat||"—")}</td>
+        <td>${qty(p.qty)}</td><td>${qty(p.std)}</td><td>${qty(n(p.qty)-n(p.std))}</td><td>${money(n(p.qty)*n(p.cost))}</td>
+        <td>${esc(p.loc||"—")}</td><td>${status(p).label}</td></tr>`).join("")}</tbody></table></div>
+    ${al.length?`<div class="p-sec"><h3>התראות פתוחות (${al.length})</h3>
+      <table><thead><tr><th>חומרה</th><th>מוצר</th><th>פירוט</th></tr></thead>
+      <tbody>${al.map(a=>`<tr><td>${a.rule.sev==="crit"?"קריטי":a.rule.sev==="warn"?"אזהרה":"מידע"}</td><td>${esc(a.p.name)}</td><td>${esc(a.text)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <div class="p-foot">הופק ממערכת ניהול המלאי · ${esc(DB.settings.org)} · ${dLong(Date.now())}</div>`;
+  setTimeout(()=>window.print(), 60);
+}
+
+/* ==========================================================
+   יומן פעילות + סנכרון עם GitHub
+   ========================================================== */
+const LOG_MAX = 800;
+const LOG_KIND = { sync:"סנכרון", product:"יינות", move:"תנועות", rule:"כללים", data:"נתונים", system:"מערכת" };
+const LOG_LVL  = { ok:{t:"הצליח",c:"ok"}, warn:{t:"אזהרה",c:"warn"}, err:{t:"שגיאה",c:"crit"}, info:{t:"מידע",c:"info"} };
+
+function logIt(kind, level, text, detail){
+  if(!Array.isArray(DB.log)) DB.log = [];
+  DB.log.unshift({ id:uid(), ts:Date.now(), kind, level, text, detail: detail || "" });
+  if(DB.log.length > LOG_MAX) DB.log.length = LOG_MAX;
+  save();
+  if(ui.view === "log") renderLog();
+}
+function logRows(){
+  return filteredLog().map(e=>[dLong(e.ts), LOG_KIND[e.kind]||e.kind, (LOG_LVL[e.level]||{}).t||e.level, e.text, e.detail]);
+}
+const LOG_HEAD = ["תאריך ושעה","סוג","רמה","פעולה","פרטים"];
+function filteredLog(){
+  const k = $("#fLogKind").value, l = $("#fLogLevel").value, q = ui.q.trim().toLowerCase();
+  return (DB.log||[]).filter(e =>
+    (!k || e.kind===k) && (!l || e.level===l) &&
+    (!q || `${e.text} ${e.detail}`.toLowerCase().includes(q)));
+}
+function renderLog(){
+  const list = filteredLog();
+  $("#logTbl").innerHTML = list.length ? `
+    <thead><tr><th class="no-sort">מתי</th><th class="no-sort c-hide-s">סוג</th><th class="no-sort">פעולה</th>
+      <th class="no-sort c-hide-m">פרטים</th><th class="no-sort">תוצאה</th></tr></thead>
+    <tbody>${list.slice(0,300).map(e=>{
+      const lv = LOG_LVL[e.level] || LOG_LVL.info;
+      return `<tr>
+        <td class="num" style="font-size:12px;white-space:nowrap">${dLong(e.ts)}</td>
+        <td class="c-hide-s"><span class="tag mute">${esc(LOG_KIND[e.kind]||e.kind)}</span></td>
+        <td class="t-name">${esc(e.text)}</td>
+        <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(e.detail||"—")}</td>
+        <td><span class="tag ${lv.c}">${lv.t}</span></td></tr>`;}).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyBox("היומן ריק","כל פעולה במערכת — הוספת יין, תנועה, סנכרון או שחזור — תירשם כאן אוטומטית.")}</td></tr></tbody>`;
+}
+
+/* ---------- GitHub ---------- */
+const gh = () => DB.settings.gh;
+const ghReady = () => !!(gh().repo && gh().token);
+const ghDirty = () => DB.meta.updated > (gh().lastSync || 0);
+let syncing = false;
+
+function b64enc(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = "", CH = 0x8000;
+  for(let i=0;i<bytes.length;i+=CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+CH));
+  return btoa(bin);
+}
+function ghUrl(){
+  const c = gh();
+  return `https://api.github.com/repos/${c.repo.trim().replace(/^\/+|\/+$/g,"")}/contents/${c.path.trim().replace(/^\/+/,"")}`;
+}
+async function ghFetch(url, opts={}){
+  const headers = {
+    "Authorization": `Bearer ${gh().token.trim()}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+    "Accept": opts.accept || "application/vnd.github+json"
+  };
+  if(opts.body) headers["Content-Type"] = "application/json";
+  return fetch(url, { method: opts.method || "GET", headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined, keepalive: !!opts.keepalive });
+}
+async function ghErr(r){
+  let msg = "";
+  try{ const j = await r.json(); msg = j.message || ""; }catch(e){}
+  if(r.status===401) return "הטוקן שגוי או פג תוקף (401)";
+  if(r.status===403) return "אין הרשאה לריפו הזה (403) — בדוק ש‑Contents מוגדר ל‑Read and write";
+  if(r.status===404) return "הריפו או הנתיב לא נמצאו (404)";
+  if(r.status===409 || r.status===422) return "התנגשות גרסאות בענן — נסה שוב";
+  return `${r.status} ${msg}`.trim();
+}
+async function ghSha(){
+  const r = await ghFetch(ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}`, { accept:"application/vnd.github.object+json" });
+  if(r.status === 404) return null;
+  if(!r.ok) throw new Error(await ghErr(r));
+  const j = await r.json();
+  return j.sha || null;
+}
+
+async function ghPush(reason="ידני", silent=false){
+  if(!ghReady()){ if(!silent) toast("קודם הגדר ריפו וטוקן בהגדרות","warn"); return false; }
+  if(syncing) return false;
+  syncing = true; syncUI("מעלה לענן…");
+  const t0 = Date.now();
+  try{
+    const payload = JSON.stringify(cleanDB(), null, 2);
+    let sha = null;
+    try{ sha = await ghSha(); }catch(e){ sha = gh().lastSha || null; }
+    const body = {
+      message: `גיבוי מחסן יינות · ${new Date().toLocaleString("he-IL")} · ${reason}`,
+      content: b64enc(payload),
+      branch: gh().branch || "main"
+    };
+    if(sha) body.sha = sha;
+    const r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
+    if(!r.ok) throw new Error(await ghErr(r));
+    const j = await r.json();
+    logIt("sync","ok", `הועלה גיבוי לענן · ${reason}`,
+      `${(payload.length/1024).toFixed(0)} ק״ב · ${DB.products.length} יינות · ${DB.moves.length} תנועות · ${Date.now()-t0} מ״ש`);
+    gh().lastSha = (j.content && j.content.sha) || "";
+    gh().lastSync = Date.now();
+    save();
+    if(!silent) toast("הגיבוי הועלה לגיטהאב","ok");
+    return true;
+  }catch(e){
+    logIt("sync","err","העלאה לענן נכשלה", String(e.message || e));
+    if(!silent) toast("ההעלאה נכשלה — " + (e.message||e), "err");
+    return false;
+  }finally{ syncing = false; syncUI(); }
+}
+
+function applyRemote(p){
+  const keep = Object.assign({}, gh());
+  DB = Object.assign(structuredClone(DEF), p);
+  DB.settings = Object.assign(structuredClone(DEF.settings), p.settings || {});
+  DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings && p.settings.gh) || {},
+    { repo:keep.repo, path:keep.path, branch:keep.branch, token:keep.token, auto:keep.auto, lastSync:Date.now() });
+  if(!Array.isArray(DB.log)) DB.log = [];
+  save(); applyTheme(); renderSettings(); refresh(); syncUI();
+}
+
+async function ghPull(opts={}){
+  const silent = !!opts.silent;
+  if(!ghReady()){ if(!silent) toast("קודם הגדר ריפו וטוקן בהגדרות","warn"); return false; }
+  if(syncing) return false;
+  syncing = true; syncUI("בודק בענן…");
+  try{
+    const r = await ghFetch(ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}`, { accept:"application/vnd.github.raw" });
+    if(r.status === 404){
+      logIt("sync","warn","לא נמצא קובץ גיבוי בענן", gh().repo + " · " + gh().path);
+      if(!silent) toast("אין עדיין גיבוי בענן — לחץ על העלאה כדי ליצור אותו","warn");
+      return false;
+    }
+    if(!r.ok) throw new Error(await ghErr(r));
+    const text = await r.text();
+    const p = JSON.parse(text);
+    if(!p.products || !Array.isArray(p.products)) throw new Error("הקובץ בענן אינו גיבוי תקין");
+    const remoteAt = (p.meta && p.meta.updated) || 0;
+    const info = `${p.products.length} יינות · ${(p.moves||[]).length} תנועות · עודכן ${remoteAt?dLong(remoteAt):"לא ידוע"}`;
+
+    if(opts.check){
+      if(remoteAt <= DB.meta.updated){
+        logIt("sync","info","הענן מעודכן — לא בוצע שינוי", info);
+        syncUI(); return false;
+      }
+      if(ghDirty()){
+        syncing = false; syncUI();
+        conflictModal(p, info);
+        return false;
+      }
+    }
+    applyRemote(p);
+    logIt("sync","ok", opts.check ? "נטענה גרסה חדשה מהענן" : "הורדה מהענן הושלמה", info);
+    if(!silent) toast(`נטענו ${DB.products.length} יינות מהענן`,"ok");
+    else toast("נטענה גרסה עדכנית מהענן","ok");
+    return true;
+  }catch(e){
+    logIt("sync","err","הורדה מהענן נכשלה", String(e.message || e));
+    if(!silent) toast("ההורדה נכשלה — " + (e.message||e), "err");
+    return false;
+  }finally{ syncing = false; syncUI(); }
+}
+
+function conflictModal(p, info){
+  logIt("sync","warn","זוהתה התנגשות בין הענן למכשיר", info);
+  openModal(`<div class="modal-h"><div class="modal-t">יש שתי גרסאות שונות</div></div>
+    <div class="modal-b">
+      <p style="font-size:13.5px;line-height:1.7">בענן יש גיבוי חדש יותר, אבל גם במכשיר הזה בוצעו שינויים מאז הסנכרון האחרון. בחר איזו גרסה שומרים.</p>
+      <div class="grid mt" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="card"><div class="card-b"><div class="eyebrow">בענן</div><div style="font-size:12.5px;color:var(--muted)">${esc(info)}</div></div></div>
+        <div class="card"><div class="card-b"><div class="eyebrow">במכשיר</div><div style="font-size:12.5px;color:var(--muted)">${DB.products.length} יינות · ${DB.moves.length} תנועות · עודכן ${dLong(DB.meta.updated)}</div></div></div>
+      </div>
+    </div>
+    <div class="modal-f"><button class="btn" data-close>אחליט אחר כך</button>
+      <button class="btn" id="cfLocal">להשאיר מקומי ולהעלות</button>
+      <button class="btn primary" id="cfRemote">לטעון מהענן</button></div>`);
+  $("#cfRemote").onclick = ()=>{ applyRemote(p); logIt("sync","ok","נבחרה הגרסה מהענן", info); closeModal(); toast("נטענה הגרסה מהענן","ok"); };
+  $("#cfLocal").onclick  = ()=>{ closeModal(); ghPush("החלטת התנגשות"); };
+}
+
+async function ghTest(){
+  if(!ghReady()){ toast("צריך למלא ריפו וטוקן","warn"); return; }
+  syncUI("בודק חיבור…");
+  try{
+    const r = await ghFetch(`https://api.github.com/repos/${gh().repo.trim()}`);
+    if(!r.ok) throw new Error(await ghErr(r));
+    const j = await r.json();
+    const w = j.permissions && j.permissions.push;
+    logIt("sync", w?"ok":"warn", "בדיקת חיבור לגיטהאב",
+      `${j.full_name} · ${j.private?"ריפו פרטי":"ריפו ציבורי"} · הרשאת כתיבה: ${w?"יש":"אין"}`);
+    toast(w ? `החיבור תקין — ${j.full_name}` : "החיבור עובד אבל אין הרשאת כתיבה", w?"ok":"warn");
+    if(!j.private) toast("שים לב: הריפו ציבורי. מומלץ ריפו פרטי לנתוני המחסן.","warn");
+  }catch(e){
+    logIt("sync","err","בדיקת חיבור נכשלה", String(e.message||e));
+    toast("בדיקת החיבור נכשלה — " + (e.message||e), "err");
+  }finally{ syncUI(); }
+}
+
+function syncUI(state){
+  const c = gh(), on = ghReady();
+  const txt = state ? state : !on ? "ענן לא מוגדר"
+    : c.lastSync ? (ghDirty() ? "יש שינויים שלא הועלו" : "מסונכרן")
+    : "מוגדר — עוד לא סונכרן";
+  $("#syncTxt").textContent = txt;
+  $("#syncDot").classList.toggle("off", !on || (on && ghDirty()));
+  const st = $("#syncState");
+  if(st){
+    st.textContent = txt;
+    st.className = "tag spacer " + (!on ? "mute" : state ? "info" : ghDirty() ? "warn" : "ok");
+  }
+  const last = $("#ghLast");
+  if(last) last.textContent = c.lastSync
+    ? `${dLong(c.lastSync)} · ${c.repo}/${c.path}` + (ghDirty() ? " · מאז בוצעו שינויים מקומיים" : "")
+    : "עוד לא בוצע סנכרון מהמכשיר הזה.";
+  $("#ghAuto") && $("#ghAuto").classList.toggle("on", !!c.auto);
+}
+function renderSync(){
+  const c = gh();
+  $("#ghRepo").value = c.repo || "";
+  $("#ghPath").value = c.path || "data/backup.json";
+  $("#ghBranch").value = c.branch || "main";
+  $("#ghToken").value = c.token || "";
+  syncUI();
+}
+function saveSync(){
+  const c = gh();
+  c.repo = $("#ghRepo").value.trim();
+  c.path = $("#ghPath").value.trim() || "data/backup.json";
+  c.branch = $("#ghBranch").value.trim() || "main";
+  c.token = $("#ghToken").value.trim();
+  save(); syncUI();
+}
+
+/* ---------- wiring ---------- */
+["#ghRepo","#ghPath","#ghBranch","#ghToken"].forEach(sel=>{
+  const el = $(sel);
+  if(el) el.addEventListener("change", ()=>{ saveSync(); logIt("data","ok","עודכנו הגדרות הסנכרון", gh().repo + " · " + gh().path); });
+});
+if($("#ghAuto")) $("#ghAuto").onclick = ()=>{ gh().auto = !gh().auto; save(); syncUI();
+  logIt("data","ok", gh().auto ? "סנכרון אוטומטי הופעל" : "סנכרון אוטומטי כובה", ""); };
+if($("#ghPushBtn")) $("#ghPushBtn").onclick = ()=>ghPush("ידני");
+if($("#ghPullBtn")) $("#ghPullBtn").onclick = ()=>confirmModal("הורדה מהענן",
+  "הנתונים שבמכשיר יוחלפו בגרסה שבענן. אם יש כאן שינויים שלא הועלו — הם יאבדו.","הורדה", ()=>ghPull({}));
+if($("#ghTestBtn")) $("#ghTestBtn").onclick = ghTest;
+if($("#ghForget")) $("#ghForget").onclick = ()=>confirmModal("ניתוק מהענן",
+  "הטוקן יימחק מהמכשיר הזה. הגיבויים שכבר עלו לגיטהאב יישארו שם.","ניתוק", ()=>{
+    gh().token = ""; gh().lastSha = ""; save(); renderSync();
+    logIt("sync","warn","נותק החיבור לגיטהאב","הטוקן נמחק מהמכשיר"); toast("נותק מהענן","warn"); });
+
+/* כפתורי סנכרון מהירים בראש העמוד */
+$("#btnQuickPush").onclick = ()=>ghPush("גיבוי מהיר");
+$("#btnQuickPull").onclick = ()=>ghPull({check:true});
+
+/* מצב עריכה גלובלי באתר */
+$("#globalEditBtn").onclick = ()=>{
+  ui.globalEdit = !ui.globalEdit;
+  document.body.classList.toggle("global-edit-mode", ui.globalEdit);
+  $("#globalEditBtn").classList.toggle("active", ui.globalEdit);
+  document.body.contentEditable = ui.globalEdit ? "true" : "false";
+  toast(ui.globalEdit ? "מצב עריכה גלובלי הופעל — לחץ על טקסטים לעריכה" : "מצב עריכה גלובלי הושבת", ui.globalEdit ? "warn" : "ok");
+};
+
+["#fLogKind","#fLogLevel"].forEach(sel=>{ if($(sel)) $(sel).addEventListener("change", renderLog); });
+if($("#logXls")) $("#logXls").onclick = ()=>toXLS("יומן פעילות", LOG_HEAD, logRows(), "yeynot-log-"+today());
+if($("#logCsv")) $("#logCsv").onclick = ()=>toCSV(LOG_HEAD, logRows(), "yeynot-log-"+today());
+if($("#logClear")) $("#logClear").onclick = ()=>confirmModal("ניקוי היומן","כל רשומות היומן יימחקו. הנתונים עצמם לא ייפגעו.","ניקוי",()=>{
+  DB.log = []; save(); renderLog(); logIt("system","warn","היומן נוקה",""); toast("היומן נוקה","warn"); });
+if($("#syncChip")) $("#syncChip").onclick = ()=>go("settings");
+if($("#globalSearch")) $("#globalSearch").addEventListener("input", ()=>{ if(ui.view==="log") renderLog(); });
+
+/* ---------- אוטומטי: פתיחה וסגירה ---------- */
+let lastAuto = 0;
+function autoPush(reason){
+  if(!gh().auto || !ghReady() || !ghDirty() || syncing) return;
+  if(Date.now() - lastAuto < 8000) return;
+  lastAuto = Date.now();
+  ghPush(reason, true);
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "hidden") autoPush("יציאה מהמסך"); });
+addEventListener("pagehide", ()=>autoPush("סגירת המערכת"));
+
+renderSync();
+renderLog();
+if(gh().auto && ghReady()) setTimeout(()=>ghPull({check:true, silent:true}), 800);
+</script>
+
+<script>
+/* ==========================================================
+   חלונות עריכה
+   ========================================================== */
+function openModal(html, wide=false){
+  $("#modal").className = "modal" + (wide?" wide":"");
+  $("#modal").innerHTML = html;
+  $("#veil").classList.add("on");
+  setTimeout(()=>{ const i = $("#modal input:not([type=hidden]), #modal select"); if(i && innerWidth>700) i.focus(); },60);
+}
+function closeModal(){ $("#veil").classList.remove("on"); $("#modal").innerHTML=""; }
+
+function findProduct(key){
+  if(!key) return null;
+  const k = decodeURIComponent(String(key)).toLowerCase();
+  return DB.products.find(x=>x.id===key) || DB.products.find(x=>(x.sku||"").toLowerCase()===k) || null;
+}
+function productModal(id, forcePrivate=false){
+  const found = findProduct(id);
+  if(id && !found){ toast("היין המבוקש לא נמצא במחסן הזה","warn"); go("products"); return; }
+  id = found ? found.id : null;
+  const p = found || {id:null, name:"", sku:"", cat:"אדום", unit:"בקבוק", qty:0, std:DB.settings.defStd, max:"", cost:"", price:"",
+    supplier:"", loc:"", expiry:"", notes:"", img:"", winery:"", vintage:"", varietal:"", vol:750, region:"", isPrivate:forcePrivate};
+  const cats = [...new Set([...DB.products.map(x=>x.cat), "אדום","לבן","רוזה","מבעבע","מחוזק"].filter(Boolean))];
+  let img = p.img || "";
+  openModal(`
+    <div class="modal-h"><div class="modal-t">${id?"עריכת מוצר":"מוצר חדש"}</div>
+      <button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-b">
+      <div class="eyebrow">תמונת הבקבוק</div>
+      <div class="drop" id="pDrop">
+        <div id="pPrevWrap">${img?`<img class="drop-prev" src="${img}" alt="">`:`<div class="drop-ph">${svgIco("i-image")}</div>`}</div>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13px;font-weight:600">גרור לכאן תמונה, או בחר קובץ</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:3px">התמונה מוקטנת ונשמרת בתוך המערכת — עובד גם בלי אינטרנט.</div>
+          <div class="row" style="margin-top:99px">
+            <button class="btn sm" id="pPick">בחירת תמונה</button>
+            <button class="btn sm danger" id="pImgDel" ${img?"":"hidden"}>הסרה</button>
+            <input type="file" id="pFile" accept="image/*" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="eyebrow" style="margin-top:18px">פרטי היין</div>
+      <div class="form-grid">
+        <div class="field full"><label>שם היין</label><input type="text" id="pName" value="${esc(p.name)}" placeholder="לדוגמה: קברנה סוביניון רזרב"></div>
+        <div class="field"><label>יקב</label><input type="text" id="pWin" value="${esc(p.winery||"")}" placeholder="שם היקב"></div>
+        <div class="field"><label>בציר</label><input type="text" id="pVin" value="${esc(p.vintage||"")}" placeholder="2021"></div>
+        <div class="field"><label>זן ענבים</label><input type="text" id="pVar" value="${esc(p.varietal||"")}" placeholder="מרלו / שרדונה"></div>
+        <div class="field"><label>סוג יין</label><input type="text" id="pCat" value="${esc(p.cat)}" list="catList" placeholder="אדום / לבן / רוזה">
+          <datalist id="catList">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+        <div class="field"><label>אזור</label><input type="text" id="pReg" value="${esc(p.region||"")}" placeholder="גליל עליון"></div>
+        <div class="field"><label>נפח בקבוק <span class="hint">— מ״ל</span></label><input type="number" id="pVol" step="any" value="${p.vol===""?"":n(p.vol)||750}"></div>
+      </div>
+      <div class="eyebrow" style="margin-top:18px">מלאי, שיוך ומחירים</div>
+      <div class="form-grid">
+        <div class="field"><label>שיוך יין</label><select id="pIsPrivate">
+          <option value="false" ${!p.isPrivate?"selected":""}>מחסן כללי (נכלל בסיכומים)</option>
+          <option value="true" ${p.isPrivate?"selected":""}>מקרר פרטי (לא נכלל בסיכומים)</option>
+        </select></div>
+        <div class="field"><label>מק״ט</label><input type="text" id="pSku" value="${esc(p.sku)}" placeholder="W-1042"></div>
+        <div class="field"><label>יחידת מידה</label><input type="text" id="pUnit" value="${esc(p.unit)}" placeholder="בקבוק / ארגז"></div>
+        <div class="field"><label>כמות במלאי</label><input type="number" id="pQty" step="any" value="${n(p.qty)}"></div>
+        <div class="field"><label>תקן <span class="hint">— מינימום שחייב להיות</span></label><input type="number" id="pStd" step="any" value="${n(p.std)}"></div>
+        <div class="field"><label>מקסימום <span class="hint">— לא חובה</span></label><input type="number" id="pMax" step="any" value="${p.max===""?"":n(p.max)}"></div>
+        <div class="field"><label>מיקום במרתף/במקרר</label><input type="text" id="pLoc" value="${esc(p.loc)}" placeholder="מדף ב׳ / מקרר פרטי"></div>
+        <div class="field"><label>מחיר עלות</label><input type="number" id="pCost" step="any" value="${p.cost===""?"":n(p.cost)}"></div>
+        <div class="field"><label>מחיר מכירה</label><input type="number" id="pPrice" step="any" value="${p.price===""?"":n(p.price)}"></div>
+        <div class="field"><label>ספק</label><input type="text" id="pSup" value="${esc(p.supplier)}"></div>
+        <div class="field"><label>לשתייה עד <span class="hint">— לא חובה</span></label><input type="date" id="pExp" value="${esc(p.expiry)}"></div>
+        <div class="field full"><label>הערות</label><textarea id="pNotes" placeholder="הערות טעימה, הזמנות, מידע לספק">${esc(p.notes)}</textarea></div>
+      </div>
+    </div>
+    <div class="modal-f">${id?`<button class="btn danger" data-del="${id}" data-inmodal>מחיקת היין</button>
+        <button class="btn" data-link="${esc(p.sku||p.id)}">${svgIco("i-link")}העתקת קישור</button>`:""}
+      <button class="btn" data-close>ביטול</button>
+      <button class="btn primary" id="pSave">${id?"שמירת שינויים":"הוספת היין"}</button></div>`, true);
+
+  const setImg = v => {
+    img = v || "";
+    $("#pPrevWrap").innerHTML = img ? `<img class="drop-prev" src="${img}" alt="">` : `<div class="drop-ph">${svgIco("i-image")}</div>`;
+    $("#pImgDel").hidden = !img;
+  };
+  $("#pPick").onclick = ()=>$("#pFile").click();
+  $("#pFile").onchange = e => { readImage(e.target.files[0], v=>{ setImg(v); toast("התמונה נוספה","ok"); }); e.target.value=""; };
+  $("#pImgDel").onclick = ()=>{ setImg(""); toast("התמונה הוסרה","warn"); };
+  const dz = $("#pDrop");
+  ["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove("over"); }));
+  dz.addEventListener("drop", e=>{ const f = e.dataTransfer.files[0]; if(f) readImage(f, v=>{ setImg(v); toast("התמונה נוספה","ok"); }); });
+  dz.addEventListener("paste", e=>{ const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/")); if(it) readImage(it.getAsFile(), setImg); });
+
+  $("#pSave").onclick = ()=>{
+    const name = $("#pName").value.trim();
+    if(!name){ toast("צריך שם מוצר כדי לשמור","err"); $("#pName").focus(); return; }
+    const isPriv = $("#pIsPrivate").value === "true";
+    const rec = { id: id||uid(), name, sku:$("#pSku").value.trim(), cat:$("#pCat").value.trim(),
+      img, winery:$("#pWin").value.trim(), vintage:$("#pVin").value.trim(), varietal:$("#pVar").value.trim(),
+      region:$("#pReg").value.trim(), vol:$("#pVol").value===""?"":n($("#pVol").value),
+      unit:$("#pUnit").value.trim()||"בקבוק", qty:n($("#pQty").value), std:n($("#pStd").value),
+      max:$("#pMax").value===""?"":n($("#pMax").value), cost:$("#pCost").value===""?"":n($("#pCost").value),
+      price:$("#pPrice").value===""?"":n($("#pPrice").value), supplier:$("#pSup").value.trim(),
+      loc:$("#pLoc").value.trim(), expiry:$("#pExp").value, notes:$("#pNotes").value.trim(),
+      isPrivate: isPriv,
+      created: id? DB.products.find(x=>x.id===id).created : Date.now(), updated: Date.now() };
+    if(id) DB.products = DB.products.map(x=>x.id===id?rec:x); else DB.products.push(rec);
+    save(); closeModal(); refresh();
+    toast(id?"היין עודכן":"היין נוסף","ok");
+  };
+}
+
+function moveModal(pid, type){
+  if(!DB.products.length){ toast("צריך קודם להוסיף יין","warn"); return; }
+  const t = type || "in";
+  openModal(`
+    <div class="modal-h"><div class="modal-t">רישום תנועת מלאי</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-b"><div class="form-grid">
+      <div class="field full"><label>יין</label><select id="mPid">${DB.products.map(p=>`<option value="${p.id}" ${p.id===pid?"selected":""}>${esc(p.name)}${p.sku?" · "+esc(p.sku):""} (${qty(p.qty)} ${esc(p.unit||"")}${p.isPrivate?' - מקרר פרטי':''})</option>`).join("")}</select></div>
+      <div class="field"><label>סוג תנועה</label><select id="mType">${Object.entries(MOVE).map(([k,v])=>`<option value="${k}" ${k===t?"selected":""}>${v.label}</option>`).join("")}</select></div>
+      <div class="field"><label>כמות <span class="hint" id="mHint"></span></label><input type="number" id="mQty" step="any" min="0" value="1"></div>
+      <div class="field"><label>מחיר ליחידה <span class="hint">— ריק = מחיר המוצר</span></label><input type="number" id="mPrice" step="any" placeholder="לפי כרטיס המוצר"></div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="mDate" value="${new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16)}"></div>
+      <div class="field full"><label>הערה</label><input type="text" id="mNote" placeholder="מספר הזמנה, שם מקבל, סיבה…"></div>
+      <div class="full" id="mPreview" style="font-size:12.5px;color:var(--muted)"></div>
+    </div></div>
+    <div class="modal-f"><button class="btn" data-close>ביטול</button><button class="btn primary" id="mSave">רישום התנועה</button></div>`);
+
+  const upd = ()=>{
+    const p = DB.products.find(x=>x.id===$("#mPid").value);
+    const ty = $("#mType").value, q = n($("#mQty").value);
+    $("#mHint").textContent = ty==="adjust" ? "— הכמות שנספרה בפועל" : "";
+    $("#mPrice").parentElement.style.display = (ty==="sale") ? "" : "none";
+    if(!p) return;
+    const after = ty==="adjust" ? q : n(p.qty) + MOVE[ty].sign*q;
+    $("#mPreview").innerHTML = `מלאי אחרי הפעולה: <b class="num" style="color:${after<0?"var(--crit)":after<n(p.std)?"var(--warn)":"var(--ok)"}">${qty(after)} ${esc(p.unit||"")}</b> · תקן ${qty(p.std)}${after<0?" — התוצאה שלילית":""}`;
+  };
+  ["#mPid","#mType","#mQty"].forEach(s=>{ $(s).oninput = upd; $(s).onchange = upd; });
+  upd();
+
+  $("#mSave").onclick = ()=>{
+    const p = DB.products.find(x=>x.id===$("#mPid").value);
+    const ty = $("#mType").value, q = n($("#mQty").value);
+    if(!p){ toast("בחר יין","err"); return; }
+    if(q<=0 && ty!=="adjust"){ toast("הכמות חייבת להיות גדולה מאפס","err"); return; }
+    const mv = { id:uid(), pid:p.id, type:ty, qty:q, price:$("#mPrice").value, date:new Date($("#mDate").value||Date.now()).toISOString(), note:$("#mNote").value.trim(), before:n(p.qty) };
+    p.qty = ty==="adjust" ? q : n(p.qty) + MOVE[ty].sign*q;
+    if(p.qty < 0) p.qty = 0;
+    p.updated = Date.now();
+    DB.moves.push(mv); save(); closeModal(); refresh();
+    toast(`${MOVE[ty].label} נרשמה · ${p.name}: ${qty(p.qty)} ${p.unit||""}`, "ok");
+  };
+}
+
+function quickMove(pid, type){
+  const p = DB.products.find(x=>x.id===pid); if(!p) return;
+  openModal(`
+    <div class="modal-h"><div class="modal-t">${MOVE[type].label} — ${esc(p.name)}</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-b">
+      <div style="margin-bottom:14px">${gauge(p)}</div>
+      <div class="form-grid">
+        <div class="field"><label>כמות</label><input type="number" id="qQty" step="any" min="0" value="1"></div>
+        <div class="field"><label>הערה</label><input type="text" id="qNote" placeholder="לא חובה"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--muted)" id="qPrev"></div>
+    </div>
+    <div class="modal-f"><button class="btn" data-close>ביטול</button><button class="btn primary" id="qSave">אישור</button></div>`);
+  const upd = ()=>{ const after = n(p.qty)+MOVE[type].sign*n($("#qQty").value);
+    $("#qPrev").innerHTML = `מלאי אחרי: <b class="num">${qty(Math.max(0,after))} ${esc(p.unit||"")}</b> · תקן ${qty(p.std)}`; };
+  $("#qQty").oninput = upd; upd();
+  $("#qSave").onclick = ()=>{
+    const q = n($("#qQty").value);
+    if(q<=0){ toast("הכמות חייבת להיות גדולה מאפס","err"); return; }
+    DB.moves.push({id:uid(), pid:p.id, type, qty:q, price:"", date:new Date().toISOString(), note:$("#qNote").value.trim(), before:n(p.qty)});
+    p.qty = Math.max(0, n(p.qty)+MOVE[type].sign*q); p.updated = Date.now();
+    save(); closeModal(); refresh();
+    toast(`${MOVE[type].label}: ${p.name} → ${qty(p.qty)} ${p.unit||""}`,"ok");
+  };
+}
+
+function ruleModal(id){
+  const r = DB.rules.find(x=>x.id===id) || {id:null, name:"", field:"qty", op:"lt", val:1, sev:"warn", scope:"", on:true};
+  const cats = [...new Set(DB.products.map(p=>p.cat).filter(Boolean))];
+  openModal(`
+    <div class="modal-h"><div class="modal-t">${id?"עריכת כלל":"כלל התראה חדש"}</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-b">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">כלל בודק כל יין במחסן. כשהתנאי מתקיים — נוצרת התראה.</p>
+      <div class="form-grid">
+        <div class="field full"><label>שם הכלל</label><input type="text" id="rName" value="${esc(r.name)}" placeholder="לדוגמה: חוסר קריטי ביין"></div>
+        <div class="field"><label>מה בודקים</label><select id="rField">${Object.entries(FIELDS).map(([k,v])=>`<option value="${k}" ${k===r.field?"selected":""}>${v.label}</option>`).join("")}</select></div>
+        <div class="field"><label>תנאי</label><select id="rOp">${Object.entries(OPS).map(([k,v])=>`<option value="${k}" ${k===r.op?"selected":""}>${v.label}</option>`).join("")}</select></div>
+        <div class="field"><label>ערך</label><input type="number" id="rVal" step="any" value="${n(r.val)}"></div>
+        <div class="field"><label>חומרה</label><select id="rSev">
+          <option value="crit" ${r.sev==="crit"?"selected":""}>קריטי</option>
+          <option value="warn" ${r.sev==="warn"?"selected":""}>אזהרה</option>
+          <option value="info" ${r.sev==="info"?"selected":""}>מידע</option></select></div>
+        <div class="field full"><label>חל על</label><select id="rScope"><option value="">כל היינות</option>${cats.map(c=>`<option value="${esc(c)}" ${c===r.scope?"selected":""}>רק קטגוריית ${esc(c)}</option>`).join("")}</select></div>
+      </div>
+    </div>
+    <div class="modal-f">${id?`<button class="btn danger" data-ruledel="${id}" data-inmodal>מחיקת הכלל</button>`:""}
+      <button class="btn" data-close>ביטול</button><button class="btn primary" id="rSave">שמירה</button></div>`);
+  $("#rSave").onclick = ()=>{
+    const rec = {id:id||uid(), name:$("#rName").value.trim()||"כלל ללא שם", field:$("#rField").value, op:$("#rOp").value,
+      val:n($("#rVal").value), sev:$("#rSev").value, scope:$("#rScope").value, on:r.on!==false};
+    if(id) DB.rules = DB.rules.map(x=>x.id===id?rec:x); else DB.rules.push(rec);
+    save(); closeModal(); refresh(); toast(id?"הכלל עודכן":"הכלל נוסף","ok");
+  };
+}
+function confirmModal(title, text, label, fn){
+  openModal(`<div class="modal-h"><div class="modal-t">${esc(title)}</div></div>
+    <div class="modal-b"><p style="font-size:14px;line-height:1.6">${esc(text)}</p></div>
+    <div class="modal-f"><button class="btn" data-close>ביטול</button><button class="btn danger" id="cYes">${esc(label)}</button></div>`);
+  $("#cYes").onclick = ()=>{ fn(); closeModal(); };
+}
+</script>
+
+<script>
+/* ==========================================================
+   אירועים, הגדרות, גיבוי והפעלה
+   ========================================================== */
+function refresh(){
+  renderDash(); renderProducts(); renderPrivateFridge(); renderMoves(); renderAlerts();
+  if(ui.view==="reports") renderReports();
+  if(ui.view==="product"){
+    const p = DB.products.find(x=>x.id===ui.pid);
+    if(p) renderProduct(p); else go("products");
+  }
+}
+
+function applyTheme(){
+  const dark = DB.settings.theme === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  $("#themeIcon").setAttribute("href", dark ? "#i-sun" : "#i-moon");
+  $("#themeBtn").title = dark ? "מעבר למצב יום" : "מעבר למצב לילה";
+  $("#setTheme").classList.toggle("on", dark);
+  $('meta[name=theme-color]').setAttribute("content", dark ? "#0E141A" : "#6C2A47");
+}
+function toggleTheme(){ DB.settings.theme = DB.settings.theme==="dark" ? "light" : "dark"; save(); applyTheme(); setTimeout(refresh,20); }
+
+function renderSettings(){
+  $("#setOrg").value = DB.settings.org;
+  $("#setCur").value = DB.settings.currency;
+  $("#setStd").value = DB.settings.defStd;
+  $("#setExp").value = DB.settings.expDays;
+  $("#orgName").textContent = DB.settings.org;
+  document.title = DB.settings.org + " — ניהול מלאי";
+  let size = 0; try{ size = (localStorage.getItem(KEY)||"").length; }catch(e){}
+  const kb = size/1024, pct = Math.min(100, kb/5120*100);
+  const imgs = DB.products.filter(p=>p.img).length;
+  $("#storeInfo").textContent = `בשימוש ${kb<1024?kb.toFixed(0)+" ק״ב":(kb/1024).toFixed(1)+" מ״ב"} מתוך כ־5 מ״ב זמינים · ${imgs} תמונות מתוך ${DB.products.length} יינות. הנתונים נשמרים בדפדפן הזה בלבד, בלי שרת — לכן העבודה זהה אונליין ואופליין. למעבר מכשיר: הורד גיבוי וטען אותו שם.`;
+  const bar = $("#storeBar");
+  bar.style.width = pct.toFixed(1)+"%";
+  bar.className = pct>90 ? "full" : pct>70 ? "hot" : "";
+}
+["#setOrg","#setCur","#setStd","#setExp"].forEach(s=>{
+  document.addEventListener("change", e=>{
+    if(!e.target.closest(s)) return;
+    DB.settings.org = $("#setOrg").value.trim() || "מחסן";
+    DB.settings.currency = $("#setCur").value;
+    DB.settings.defStd = n($("#setStd").value);
+    DB.settings.expDays = n($("#setExp").value);
+    save(); renderSettings(); refresh(); toast("ההגדרות נשמרו","ok");
+  });
+});
+
+/* ---- backup ---- */
+function cleanDB(){
+  const c = JSON.parse(JSON.stringify(DB));
+  if(c.settings && c.settings.gh) c.settings.gh.token = "";
+  return c;
+}
+function exportBackup(){
+  dl(JSON.stringify(cleanDB(),null,2), `yeynot-backup-${today()}.json`, "application/json");
+  toast("קובץ הגיבוי ירד — שמור אותו בריפו בגיטהאב","ok");
+}
+function importBackup(file){
+  const keepToken = (DB.settings.gh||{}).token || "";
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const p = JSON.parse(String(fr.result).replace(/^\uFEFF/,""));
+      if(!p.products || !Array.isArray(p.products)) throw 0;
+      DB = Object.assign(structuredClone(DEF), p);
+      DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
+      DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{}, {token:keepToken});
+      if(!Array.isArray(DB.log)) DB.log = [];
+      save(); applyTheme(); renderSettings(); refresh();
+      toast(`שוחזרו ${DB.products.length} יינות ו־${DB.moves.length} תנועות`,"ok");
+    }catch(e){ toast("הקובץ אינו גיבוי תקין של המערכת","err"); }
+  };
+  fr.readAsText(file);
+}
+function loadDemo(){
+  const W = (name,winery,vintage,varietal,cat,region,sku,q,std,max,cost,price,loc,exp,isPrivate=false)=>({
+    id:uid(), name, winery, vintage, varietal, cat, region, sku, unit:"בקבוק", vol:750,
+    qty:q, std, max, cost, price, loc, supplier:winery, expiry:exp||"", notes:"", img:"", isPrivate,
+    created:Date.now(), updated:Date.now()});
+  const y = d => iso(Date.now()+d*864e5);
+  DB.products = [
+    W("קברנה סוביניון רזרב","יקב הרי יהודה","2019","קברנה סוביניון","אדום","הרי ירושלים","W-101", 48, 36, 240,  62, 129, "כלוב א׳ 1", y(900)),
+    W("מרלו יחיד","יקב נחל צין","2021","מרלו","אדום","נגב","W-102", 14, 30, 180,  41,  89, "כלוב א׳ 2", y(540)),
+    W("שרדונה חבית","יקב מעלה תבור","2022","שרדונה","לבן","גליל תחתון","W-201", 62, 24, 200,  38,  85, "קירור 1", y(240)),
+    W("סוביניון בלאן","יקב מעלה תבור","2023","סוביניון בלאן","לבן","גליל תחתון","W-202",  6, 24, 160,  29,  69, "קירור 1", y(120)),
+    W("רוזה יבש","יקב שדות אלה","2023","גרנאש","רוזה","שפלת יהודה","W-301", 30, 18, 120,  27,  62, "קירור 2", y(150)),
+    W("ברוט מבעבע","יקב הרי יהודה","2020","שרדונה","מבעבע","הרי ירושלים","W-401",  0, 12,  80,  71, 149, "כלוב ג׳ 1", y(700)),
+    W("פורט מיושן","יקב נחל צין","2016","טוריגה","מחוזק","נגב","W-501", 21,  8,  60,  95, 189, "כלוב ג׳ 4", ""),
+    W("סירה בלנד","יקב שדות אלה","2020","סירה","אדום","שפלת יהודה","W-103", 96, 30, 300,  46,  99, "כלוב ב׳ 2", y(1100)),
+    W("רייזלינג חצי יבש","יקב מעלה תבור","2023","רייזלינג","לבן","גליל תחתון","W-203", 11, 20, 140,  33,  74, "קירור 2", y(95)),
+    W("קברנה פרטי נדיר","יקב בוטיק","2017","קברנה סוביניון","אדום","גליל","PRIV-01", 3, 0, 10, 150, 350, "מקרר פרטי - מדף עליון", "", true)
+  ];
+  DB.moves = [];
+  const now = Date.now();
+  for(let d=59; d>=0; d--){
+    const day = now - d*864e5;
+    const weekend = [5,6].includes(new Date(day).getDay());
+    const k = (weekend?3:1) + Math.floor(Math.random()*3);
+    for(let i=0;i<k;i++){
+      const p = DB.products[Math.floor(Math.random()*DB.products.length)];
+      const r = Math.random();
+      const type = r<0.66 ? "sale" : r<0.88 ? "in" : "out";
+      const q = type==="in" ? 12*(1+Math.floor(Math.random()*4)) : 1+Math.floor(Math.random()*(weekend?9:5));
+      DB.moves.push({id:uid(), pid:p.id, type, qty:q, price:"", date:new Date(day + 3.6e7 + Math.random()*3.6e7).toISOString(),
+        note: type==="in" ? "קבלת סחורה מהיקב" : type==="sale" ? (Math.random()<0.4?"מכירה למסעדה":"מכירה בחנות") : "טעימה / שבירה"});
+    }
+  }
+  if(!DB.rules.length) DB.rules = defaultRules();
+  save(); refresh(); renderSettings();
+  toast("נטענו 10 יינות ו־60 ימי תנועות לדוגמה","ok");
+}
+
+/* ---- global events ---- */
+document.addEventListener("click", e=>{
+  const t = e.target;
+  const nav = t.closest("[data-view]");           if(nav) return go(nav.dataset.view);
+  const gt  = t.closest("[data-goto]");           if(gt)  return go(gt.dataset.goto);
+  if(t.closest("[data-close]") || t===$("#veil")) return closeModal();
+
+  const lk = t.closest("[data-link]"); if(lk) return shareLink("#/product/" + encodeURIComponent(lk.dataset.link));
+  const pv = t.closest("[data-pv]");   if(pv) { ui.pv = pv.dataset.pv; return renderProducts(); }
+  const mv = t.closest("[data-mv]");  if(mv)  return quickMove(mv.dataset.id, mv.dataset.mv);
+  const ed = t.closest("[data-edit]"); if(ed) return productModal(ed.dataset.edit);
+  const op = t.closest("[data-openprod]"); if(op) return openProductPage(op.dataset.openprod);
+  const mf = t.closest("[data-mvfull]");   if(mf) return moveModal(mf.dataset.id, mf.dataset.mvfull);
+
+  const de = t.closest("[data-del]");
+  if(de){ const p = DB.products.find(x=>x.id===de.dataset.del); if(!p) return;
+    return confirmModal("מחיקת יין", `${p.name} יימחק מהמחסן, כולל התמונה. התנועות ההיסטוריות יישארו ביומן. אי אפשר לבטל.`, "מחיקה", ()=>{
+      DB.products = DB.products.filter(x=>x.id!==p.id); save(); refresh(); toast("היין נמחק","warn"); }); }
+
+  const dm = t.closest("[data-delmv]");
+  if(dm){ const m = DB.moves.find(x=>x.id===dm.dataset.delmv); if(!m) return;
+    return confirmModal("ביטול תנועה","התנועה תימחק מהיומן והמלאי יעודכן בחזרה בהתאם.","ביטול התנועה",()=>{
+      const p = DB.products.find(x=>x.id===m.pid);
+      if(p){ p.qty = m.type==="adjust" ? n(m.before) : n(p.qty) - MOVE[m.type].sign*n(m.qty); if(p.qty<0) p.qty=0; }
+      DB.moves = DB.moves.filter(x=>x.id!==m.id); save(); refresh(); toast("התנועה בוטלה","warn"); }); }
+
+  const re = t.closest("[data-ruleedit]"); if(re) return ruleModal(re.dataset.ruleedit);
+  const ro = t.closest("[data-ruleon]");
+  if(ro){ const r = DB.rules.find(x=>x.id===ro.dataset.ruleon); r.on=!r.on; save(); renderAlerts(); renderDash();
+    return toast(r.on?"הכלל הופעל":"הכלל הושבת","ok"); }
+  const rd = t.closest("[data-ruledel]");
+  if(rd){ const id = rd.dataset.ruledel;
+    return confirmModal("מחיקת כלל","הכלל יוסר וההתראות שנוצרו ממנו ייעלמו.","מחיקה",()=>{
+      DB.rules = DB.rules.filter(x=>x.id!==id); save(); refresh(); toast("הכלל נמחק","warn"); }); }
+
+  const nv = t.closest("[data-nav]");
+  if(nv && !t.closest("button") && !t.closest("a")){ location.hash = nv.dataset.nav; return; }
+
+  const sk = t.closest("th[data-sk]");
+  if(sk){ const k = sk.dataset.sk; ui.sortP = {k, d: ui.sortP.k===k ? -ui.sortP.d : 1}; return renderProducts(); }
+  const mk = t.closest("th[data-mk]");
+  if(mk){ const k = mk.dataset.mk; ui.sortM = {k, d: ui.sortM.k===k ? -ui.sortM.d : 1}; return renderMoves(); }
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") closeModal();
+  if(e.key==="/" && !/input|textarea|select/i.test(e.target.tagName)){ e.preventDefault(); $("#globalSearch").focus(); }
+});
+
+$("#globalSearch").addEventListener("input", e=>{ ui.q = e.target.value; renderProducts(); renderPrivateFridge(); renderMoves(); });
+["#fCat","#fStatus"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderProducts); });
+["#fMoveType","#fMoveFrom","#fMoveTo"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderMoves); });
+["#rFrom","#rTo","#incPrivate"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderReports); });
+$("#rQuick").addEventListener("change", e=>{
+  const v = e.target.value; if(!v) return;
+  if(v==="m"){ const d=new Date(); $("#rFrom").value = iso(new Date(d.getFullYear(),d.getMonth(),1)); $("#rTo").value = today(); }
+  else { $("#rFrom").value = iso(Date.now()-(n(v)-1)*864e5); $("#rTo").value = today(); }
+  renderReports();
+});
+$("#shareBtn").onclick = ()=>shareLink();
+$("#themeBtn").onclick = toggleTheme;
+$("#setTheme").onclick = toggleTheme;
+$("#addProdBtn").onclick = ()=>productModal(null, false);
+if($("#addPrivProdBtn")) $("#addPrivProdBtn").onclick = ()=>productModal(null, true);
+$("#addMoveBtn").onclick = ()=>moveModal();
+$("#addRuleBtn").onclick = ()=>ruleModal();
+$("#expProdXls").onclick = ()=>toXLS("מצב מלאי יינות", PROD_HEAD, prodRows(), "yeynot-products-"+today());
+$("#expMovesXls").onclick = ()=>toXLS("יומן תנועות", MOVE_HEAD, moveRows(), "yeynot-moves-"+today());
+$("#repPdf").onclick = printPDF;
+$("#repXls").onclick = ()=>{ const {f,t}=repRange(); const allowPrivate = $("#incPrivate")?$("#incPrivate").checked:false; const st=statsFor(f,t,allowPrivate);
+  toXLS(`סיכום ${dShort(f)} עד ${dShort(t)}`, ["יין","מק״ט","נכנס","יצא","נמכר","הכנסה","עלות","רווח","מלאי כעת"],
+    st.rows.map(r=>[r.name,r.sku||"",r.in,r.out,r.sold,r.rev.toFixed(2),r.cost.toFixed(2),(r.rev-r.cost).toFixed(2),r.p?n(r.p.qty):""]), "yeynot-report-"+f+"_"+t); };
+$("#repCsv").onclick = ()=>{ const {f,t}=repRange(); const allowPrivate = $("#incPrivate")?$("#incPrivate").checked:false; const st=statsFor(f,t,allowPrivate);
+  toCSV(["יין","מק״ט","נכנס","יצא","נמכר","הכנסה","עלות","רווח","מלאי כעת"],
+    st.rows.map(r=>[r.name,r.sku||"",r.in,r.out,r.sold,r.rev.toFixed(2),r.cost.toFixed(2),(r.rev-r.cost).toFixed(2),r.p?n(r.p.qty):""]), "yeynot-report-"+f+"_"+t); };
+$("#bkExport").onclick = exportBackup;
+$("#bkImport").onclick = ()=>$("#bkFile").click();
+$("#bkFile").onchange = e=>{ if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=""; };
+$("#bkDemo").onclick = ()=>confirmModal("טעינת נתוני הדגמה","הנתונים הקיימים יוחלפו בנתוני דוגמה. מומלץ להוריד גיבוי קודם.","טעינה",loadDemo);
+$("#bkWipe").onclick = ()=>confirmModal("מחיקת כל הנתונים","כל היינות, התמונות, התנועות והכללים יימחקו מהמכשיר הזה. אין דרך לשחזר בלי קובץ גיבוי.","מחיקה מלאה",()=>{
+  DB = structuredClone(DEF); DB.rules = defaultRules(); save(); applyTheme(); renderSettings(); refresh(); toast("הנתונים נמחקו","warn"); });
+
+/* ---- clock + network ---- */
+function tick(){
+  const d = new Date();
+  $("#clockT").textContent = d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  $("#clockD").textContent = d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+function net(){
+  const on = navigator.onLine;
+  $("#netDot").classList.toggle("off", !on);
+  $("#netTxt").textContent = on ? "מחובר לרשת" : "עובד אופליין";
+}
+addEventListener("online", net); addEventListener("offline", net);
+addEventListener("beforeunload", ()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} });
+
+/* ---- boot ---- */
+load();
+if(!DB.rules.length) DB.rules = defaultRules();
+$("#rFrom").value = iso(Date.now()-29*864e5);
+$("#rTo").value = today();
+applyTheme(); renderSettings(); refresh(); tick(); net(); route();
+setInterval(tick, 1000);
+setInterval(()=>{ renderAlerts(); }, 60000);
+
+</script>
+</body>
+</html>
