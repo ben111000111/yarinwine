@@ -823,7 +823,7 @@ a.gcard{text-decoration:none;color:inherit}
 "use strict";
 
 /* ==========================================================
-   מחסן — מערכת ניהול מלאי | גרסה מותאמת לאייפון, מובייל ומחשבים
+   מחסן — מערכת ניהול מלאי | גרסה חסינה ל-iOS Safari ולמחשבים
    ========================================================== */
 
 const HARDCODED_GH = {
@@ -2073,16 +2073,20 @@ function renderLog(){
   }
 }
 
-/* ---------- GitHub Engine (עם מנגנון מניעת התנגשויות SHA) ---------- */
+/* ---------- GitHub Engine (Safe Base64 + Cache Busting) ---------- */
 const gh = () => DB.settings.gh;
 const ghReady = () => !!(gh().repo && gh().token);
 const ghDirty = () => DB.meta.updated > (gh().lastSync || 0);
 let syncing = false;
 
+// המרת Base64 בטוחה ב-iOS ללא חריגת גודל המחסנית
 function b64enc(str){
   const bytes = new TextEncoder().encode(str);
-  let bin = "", CH = 0x8000;
-  for(let i=0;i<bytes.length;i+=CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+CH));
+  let bin = "";
+  const CHUNK = 1024;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
   return btoa(bin);
 }
 
@@ -2098,8 +2102,13 @@ async function ghFetch(url, opts={}){
     "Accept": opts.accept || "application/vnd.github+json"
   };
   if(opts.body) headers["Content-Type"] = "application/json";
-  return fetch(url, { method: opts.method || "GET", headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined, keepalive: !!opts.keepalive });
+  return fetch(url, { 
+    method: opts.method || "GET", 
+    headers,
+    cache: "no-store", // מניעת Caching ב-iOS Safari
+    body: opts.body ? JSON.stringify(opts.body) : undefined, 
+    keepalive: !!opts.keepalive 
+  });
 }
 
 async function ghErr(r){
@@ -2108,12 +2117,14 @@ async function ghErr(r){
   if(r.status===401) return "הטוקן שגוי או פג תוקף (401)";
   if(r.status===403) return "אין הרשאה לריפו הזה (403) — בדוק ש‑Contents מוגדר ל‑Read and write";
   if(r.status===404) return "הריפו או הנתיב לא נמצאו (404)";
-  if(r.status===409 || r.status===422) return "התנגשות גרסאות בענן — בוצעה פנייה חוזרת";
+  if(r.status===409 || r.status===422) return "התנגשות גרסאות בענן";
   return `${r.status} ${msg}`.trim();
 }
 
+// שליפת SHA עם עקיפת מטמון אגרסיבית ב-Safari
 async function ghSha(){
-  const r = await ghFetch(ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}`, { accept:"application/vnd.github.object+json" });
+  const cbUrl = ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}&_t=${Date.now()}`;
+  const r = await ghFetch(cbUrl, { accept:"application/vnd.github+json" });
   if(r.status === 404) return null;
   if(!r.ok) throw new Error(await ghErr(r));
   const j = await r.json();
@@ -2128,7 +2139,7 @@ async function ghPush(reason="ידני", silent=false){
   try{
     const payload = JSON.stringify(cleanDB(), null, 2);
     
-    // 1. שליפת ה-SHA העדכני ביותר מ-GitHub ברגע ההעלאה
+    // 1. שליפת SHA נקי מהשרת (ללא Caching)
     let sha = null;
     try { 
       sha = await ghSha(); 
@@ -2143,17 +2154,19 @@ async function ghPush(reason="ידני", silent=false){
     };
     if(sha) body.sha = sha;
 
-    // 2. ניסיון העלאה ראשון
+    // 2. ניסיון העלאה
     let r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
     
-    // 3. טיפול אוטומטי בהתנגשות (409 / 422 Conflict) באמצעות שליפת SHA חדש וסנכרון חוזר
+    // 3. במידה ונוצרה התנגשות (409/422) - ניסיון חוזר מיידי עם SHA מעודכן
     if (r.status === 409 || r.status === 422) {
-      console.warn("Conflict detected. Fetching latest remote SHA and retrying push...");
+      console.warn("Conflict 409 detected. Refreshing SHA and retrying...");
       const freshSha = await ghSha();
       if (freshSha) {
         body.sha = freshSha;
-        r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
+      } else {
+        delete body.sha;
       }
+      r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
     }
 
     if(!r.ok) throw new Error(await ghErr(r));
@@ -2191,7 +2204,8 @@ async function ghPull(opts={}){
   if(syncing) return false;
   syncing = true; syncUI("בודק בענן…");
   try{
-    const r = await ghFetch(ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}`, { accept:"application/vnd.github.raw" });
+    const pullUrl = ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}&_t=${Date.now()}`;
+    const r = await ghFetch(pullUrl, { accept:"application/vnd.github.raw" });
     if(r.status === 404){
       logIt("sync","warn","לא נמצא קובץ גיבוי בענן", gh().repo + " · " + gh().path);
       if(!silent) toast("אין עדיין גיבוי בענן — לחץ על העלאה כדי ליצור אותו","warn");
@@ -2249,7 +2263,7 @@ async function ghTest(){
   if(!ghReady()){ toast("צריך למלא ריפו וטוקן","warn"); return; }
   syncUI("בודק חיבור…");
   try{
-    const r = await ghFetch(`https://api.github.com/repos/${gh().repo.trim()}`);
+    const r = await ghFetch(`https://api.github.com/repos/${gh().repo.trim()}?_t=${Date.now()}`);
     if(!r.ok) throw new Error(await ghErr(r));
     const j = await r.json();
     const w = j.permissions && j.permissions.push;
@@ -2448,7 +2462,7 @@ function productModal(id, forcePrivate=false){
         <div class="field"><label>יקב</label><input type="text" id="pWin" value="${esc(p.winery||"")}" placeholder="שם היקב"></div>
         <div class="field"><label>בציר</label><input type="text" id="pVin" value="${esc(p.vintage||"")}" placeholder="2021"></div>
         <div class="field"><label>זן ענבים</label><input type="text" id="pVar" value="${esc(p.varietal||"")}" placeholder="מרלו / שרדונה"></div>
-        <div class="field"><label>סוג ייין</label><input type="text" id="pCat" value="${esc(p.cat)}" list="catList" placeholder="אדום / לבן / רוזה">
+        <div class="field"><label>סוג יין</label><input type="text" id="pCat" value="${esc(p.cat)}" list="catList" placeholder="אדום / לבן / רוזה">
           <datalist id="catList">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
         <div class="field"><label>אזור</label><input type="text" id="pReg" value="${esc(p.region||"")}" placeholder="גליל עליון"></div>
         <div class="field"><label>נפח בקבוק <span class="hint">— מ״ל</span></label><input type="number" id="pVol" step="any" value="${p.vol===""?"":n(p.vol)||750}"></div>
@@ -2850,7 +2864,7 @@ document.addEventListener("click", e=>{
 
   const de = t.closest("[data-del]");
   if(de && de.dataset){ const p = DB.products.find(x=>x.id===de.dataset.del); if(!p) return;
-    return confirmModal("מחיקת יין", `${p.name} יימחק מהמחסן, כולל התמונה. התנועות ההיסטוריות יישארו ביומן. אי אפשר לבטל.`, "מחיקה", ()=>{
+    return confirmModal("מחיקת ייין", `${p.name} יימחק מהמחסן, כולל התמונה. התנועות ההיסטוריות יישארו ביומן. אי אפשר לבטל.`, "מחיקה", ()=>{
       DB.products = DB.products.filter(x=>x.id!==p.id); save(); refresh(); toast("היין נמחק","warn"); }); }
 
   const dm = t.closest("[data-delmv]");
