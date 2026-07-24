@@ -180,7 +180,7 @@ a{color:var(--brand);text-decoration:none}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12px;font-weight:600;color:var(--ink-2)}
 .field .hint{font-size:11px;color:var(--muted);font-weight:400}
-input[type=text],input[type=number],input[type=date],input[type=datetime-local],select,textarea{
+input[type=text],input[type=number],input[type=date],input[type=datetime-local],input[type=password],select,textarea{
   width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);
   background:var(--card);font-size:13.5px;transition:border-color var(--t),box-shadow var(--t);
 }
@@ -715,7 +715,7 @@ a.gcard{text-decoration:none;color:inherit}
           <div class="card"><div class="card-h"><span class="card-t">מובילי מכירות</span></div><div class="card-b"><div id="repChart2"></div></div></div>
         </div>
         <div class="grid mt g-2" id="repGrid2">
-          <div class="card"><div class="card-h"><span class="card-t">מכירות לפי סוג ייין</span></div><div class="card-b"><div id="repChart3"></div></div></div>
+          <div class="card"><div class="card-h"><span class="card-t">מכירות לפי סוג יין</span></div><div class="card-b"><div id="repChart3"></div></div></div>
           <div class="card"><div class="card-h"><span class="card-t">ערך המלאי לפי סוג יין</span></div><div class="card-b"><div id="repChart4"></div></div></div>
         </div>
         <div class="card mt">
@@ -755,7 +755,7 @@ a.gcard{text-decoration:none;color:inherit}
               <div class="set-row"><div><div class="set-t">שם המחסן</div><div class="set-s">מופיע בראש המסך ובראש כל דוח מודפס.</div></div><div class="ctl"><input type="text" id="setOrg" style="width:170px"></div></div>
               <div class="set-row"><div><div class="set-t">מטבע</div><div class="set-s">סימן המטבע בתצוגת מחירים.</div></div><div class="ctl"><select id="setCur" style="width:110px"><option value="₪">₪ שקל</option><option value="$">$ דולר</option><option value="€">€ אירו</option></select></div></div>
               <div class="set-row"><div><div class="set-t">תקן ברירת מחדל</div><div class="set-s">הכמות המינימלית שתיטען אוטומטית ביין חדש.</div></div><div class="ctl"><input type="number" id="setStd" min="0" style="width:90px"></div></div>
-              <div class="set-row"><div><div class="set-t">התראת חלון שתייה</div><div class="set-s">כמה ימים לפני סוף חלון השתייה להתריע.</div></div><div class="ctl"><input type="number" id="setExp" min="0" style="width:90px"></div></div>
+              <div class="set-row"><div><div class="set-t">התראות חלון שתייה</div><div class="set-s">כמה ימים לפני סוף חלון השתייה להתריע.</div></div><div class="ctl"><input type="number" id="setExp" min="0" style="width:90px"></div></div>
               <div class="set-row"><div><div class="set-t">מצב לילה</div><div class="set-s">ערכת צבעים כהה לעבודה במשמרות לילה.</div></div><div class="ctl"><div class="switch" id="setTheme"></div></div></div>
             </div>
           </div>
@@ -780,10 +780,10 @@ a.gcard{text-decoration:none;color:inherit}
               הגיבוי נשמר כקובץ JSON בריפו <b>פרטי</b> שלך, עם היסטוריית גרסאות מלאה. צור טוקן מסוג Fine-grained עם גישה לריפו הזה בלבד והרשאת Contents: Read and write.
               הטוקן נשמר רק בדפדפן הזה ולא נכלל בקבצי הגיבוי.</p>
             <div class="form-grid">
-              <div class="field"><label>ריפו <span class="hint">— בפורמט user/repo</span></label><input type="text" id="ghRepo" placeholder="ben111000111/yeynot-data"></div>
-              <div class="field"><label>נתיב הקובץ</label><input type="text" id="ghPath" placeholder="data/backup.json"></div>
-              <div class="field"><label>ענף</label><input type="text" id="ghBranch" placeholder="main"></div>
-              <div class="field"><label>טוקן גישה</label><input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off"></div>
+              <div class="field"><label>ריפו <span class="hint">— בפורמט user/repo</span></label><input type="text" id="ghRepo" name="ghRepo" placeholder="ben111000111/yeynot-data" autocomplete="on"></div>
+              <div class="field"><label>נתיב הקובץ</label><input type="text" id="ghPath" name="ghPath" placeholder="data/backup.json" autocomplete="on"></div>
+              <div class="field"><label>ענף</label><input type="text" id="ghBranch" name="ghBranch" placeholder="main" autocomplete="on"></div>
+              <div class="field"><label>טוקן גישה</label><input type="password" id="ghToken" name="ghToken" placeholder="github_pat_..." autocomplete="current-password"></div>
             </div>
             <div class="row" style="margin-top:14px">
               <button class="btn primary" id="ghPushBtn"><svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-up"/></svg>העלאה לענן</button>
@@ -823,21 +823,50 @@ a.gcard{text-decoration:none;color:inherit}
 "use strict";
 
 /* ==========================================================
-   הגדרות חיבור קבועות ל-GitHub (אופציונלי)
-   ניתן למלא כאן כדי שלא תצטרך להזין בממשק בכל מכשיר:
+   מחסן — מערכת ניהול מלאי | גרסה מותאמת לאייפון, מובייל ומחשבים
    ========================================================== */
+
 const HARDCODED_GH = {
-  repo: "",      // לדוגמה: "username/yeynot-data"
+  repo: "",      
   path: "data/backup.json",
   branch: "main",
-  token: "",     // לדוגמה: "github_pat_11AAA..."
+  token: "",     
   auto: true
 };
 
 const KEY = "wms.v1";
-const GH_KEY = "wms.gh.v1"; // מפתח שמירה עצמאי לשרת הגיבוי והטוקן
-const $  = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const GH_KEY = "wms.gh.v1"; 
+
+const $  = (s, r=document) => r ? r.querySelector(s) : null;
+const $$ = (s, r=document) => r ? Array.from(r.querySelectorAll(s)) : [];
+
+/* ---------- SAFE STORAGE WRAPPER (iOS Safari Compatible) ---------- */
+function safeGetStorage(k) {
+  try {
+    if (window.localStorage) return localStorage.getItem(k);
+  } catch (e) {
+    console.warn("localStorage get failed:", e);
+  }
+  return null;
+}
+
+function safeSetStorage(k, v) {
+  try {
+    if (window.localStorage) {
+      localStorage.setItem(k, v);
+      return true;
+    }
+  } catch (e) {
+    console.warn("localStorage set failed:", e);
+  }
+  return false;
+}
+
+function safeRemoveStorage(k) {
+  try {
+    if (window.localStorage) localStorage.removeItem(k);
+  } catch (e) {}
+}
 
 const DEF = {
   products: [], moves: [], rules: [], log: [], debts: [],
@@ -860,7 +889,7 @@ let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"t
 /* ---------- persistence ---------- */
 function load(){
   try{
-    const raw = localStorage.getItem(KEY);
+    const raw = safeGetStorage(KEY);
     if(raw){
       const p = JSON.parse(raw);
       DB = Object.assign(structuredClone(DEF), p);
@@ -871,16 +900,14 @@ function load(){
     }
   }catch(e){ toast("קובץ הנתונים המקומי פגום. נטענה מערכת ריקה.","err"); }
 
-  // טעינה עצמאית של פרטי שרת הגיבוי שאינם נמחקים ברענון/איפוס
   try{
-    const savedGh = localStorage.getItem(GH_KEY);
+    const savedGh = safeGetStorage(GH_KEY);
     if(savedGh){
       const ghObj = JSON.parse(savedGh);
       Object.assign(DB.settings.gh, ghObj);
     }
   }catch(e){}
 
-  // במידה ושדות ה-GitHub ריקים בזיכרון, נשתמש בערכים שהוגדרו בקוד
   if(!DB.settings.gh.repo && HARDCODED_GH.repo) DB.settings.gh.repo = HARDCODED_GH.repo;
   if(!DB.settings.gh.token && HARDCODED_GH.token) DB.settings.gh.token = HARDCODED_GH.token;
   if((!DB.settings.gh.path || DB.settings.gh.path==="data/backup.json") && HARDCODED_GH.path) DB.settings.gh.path = HARDCODED_GH.path;
@@ -892,14 +919,10 @@ function save(){
   DB.meta.updated = Date.now();
   clearTimeout(saveT);
   saveT = setTimeout(()=>{
-    try{
-      localStorage.setItem(KEY, JSON.stringify(DB));
-      const el = $("#savedTxt");
-      if(el) el.textContent = "נשמר " + new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
-    }catch(e){
-      toast("נגמר שטח האחסון בדפדפן — כנראה בגלל תמונות. הורד גיבוי ומחק תמונות של יינות ישנים.","err");
-    }
-  },180);
+    const success = safeSetStorage(KEY, JSON.stringify(DB));
+    const el = $("#savedTxt");
+    if(el) el.textContent = success ? "נשמר " + new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : "שגיאת אחסון במכשיר";
+  }, 180);
 }
 
 /* ---------- utils ---------- */
@@ -1933,6 +1956,7 @@ function dl(content, name, mime){
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 300);
 }
+
 function toXLS(title, head, rows, name){
   const html = `<html dir="rtl"><head><meta charset="utf-8">
   <style>table{border-collapse:collapse;font-family:Arial}th{background:#F6EAF0;border:1px solid #b9a;padding:6px;font-size:12px}
@@ -1943,17 +1967,20 @@ function toXLS(title, head, rows, name){
   dl(html, name+".xls", "application/vnd.ms-excel");
   toast("קובץ האקסל ירד למכשיר","ok");
 }
+
 function toCSV(head, rows, name){
   const q = v => `"${String(v??"").replace(/"/g,'""')}"`;
   dl([head.map(q).join(","), ...rows.map(r=>r.map(q).join(","))].join("\r\n"), name+".csv", "text/csv");
   toast("קובץ ה־CSV ירד למכשיר","ok");
 }
+
 function prodRows(){
   return filteredProducts(false).map(p=>[p.sku||"", p.name, p.winery||"", p.vintage||"", p.varietal||"", p.cat||"", p.region||"",
     n(p.vol)||"", p.unit||"", n(p.qty), n(p.std), n(p.max)||"", n(p.cost), n(p.price), (n(p.qty)*n(p.cost)).toFixed(2),
     p.loc||"", p.supplier||"", p.expiry||"", status(p).label, p.img?"יש":"אין", p.notes||""]);
 }
 const PROD_HEAD = ["מק״ט","שם היין","יקב","בציר","זן","סוג","אזור","נפח (מ״ל)","יחידה","כמות","תקן","מקסימום","מחיר עלות","מחיר מכירה","ערך מלאי","מיקום","ספק","לשתייה עד","סטטוס","תמונה","הערות"];
+
 function moveRows(){
   return filteredMoves().map(m=>{ const p = DB.products.find(x=>x.id===m.pid);
     const up = m.price!=null && m.price!=="" ? n(m.price) : (m.type==="sale"&&p?n(p.price):0);
@@ -2046,7 +2073,7 @@ function renderLog(){
   }
 }
 
-/* ---------- GitHub ---------- */
+/* ---------- GitHub Engine (עם מנגנון מניעת התנגשויות SHA) ---------- */
 const gh = () => DB.settings.gh;
 const ghReady = () => !!(gh().repo && gh().token);
 const ghDirty = () => DB.meta.updated > (gh().lastSync || 0);
@@ -2081,7 +2108,7 @@ async function ghErr(r){
   if(r.status===401) return "הטוקן שגוי או פג תוקף (401)";
   if(r.status===403) return "אין הרשאה לריפו הזה (403) — בדוק ש‑Contents מוגדר ל‑Read and write";
   if(r.status===404) return "הריפו או הנתיב לא נמצאו (404)";
-  if(r.status===409 || r.status===422) return "התנגשות גרסאות בענן — נסה שוב";
+  if(r.status===409 || r.status===422) return "התנגשות גרסאות בענן — בוצעה פנייה חוזרת";
   return `${r.status} ${msg}`.trim();
 }
 
@@ -2100,16 +2127,37 @@ async function ghPush(reason="ידני", silent=false){
   const t0 = Date.now();
   try{
     const payload = JSON.stringify(cleanDB(), null, 2);
+    
+    // 1. שליפת ה-SHA העדכני ביותר מ-GitHub ברגע ההעלאה
     let sha = null;
-    try{ sha = await ghSha(); }catch(e){ sha = gh().lastSha || null; }
+    try { 
+      sha = await ghSha(); 
+    } catch(e) { 
+      sha = gh().lastSha || null;
+    }
+
     const body = {
       message: `גיבוי מחסן יינות · ${new Date().toLocaleString("he-IL")} · ${reason}`,
       content: b64enc(payload),
       branch: gh().branch || "main"
     };
     if(sha) body.sha = sha;
-    const r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
+
+    // 2. ניסיון העלאה ראשון
+    let r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
+    
+    // 3. טיפול אוטומטי בהתנגשות (409 / 422 Conflict) באמצעות שליפת SHA חדש וסנכרון חוזר
+    if (r.status === 409 || r.status === 422) {
+      console.warn("Conflict detected. Fetching latest remote SHA and retrying push...");
+      const freshSha = await ghSha();
+      if (freshSha) {
+        body.sha = freshSha;
+        r = await ghFetch(ghUrl(), { method:"PUT", body, keepalive: !!silent && payload.length < 60000 });
+      }
+    }
+
     if(!r.ok) throw new Error(await ghErr(r));
+    
     const j = await r.json();
     logIt("sync","ok", `הועלה גיבוי לענן · ${reason}`,
       `${(payload.length/1024).toFixed(0)} ק״ב · ${DB.products.length} יינות · ${DB.moves.length} תנועות · ${Date.now()-t0} מ״ש`);
@@ -2237,17 +2285,6 @@ function syncUI(state){
   if(autoEl) autoEl.classList.toggle("on", !!c.auto);
 }
 
-function renderSync(){
-  const c = gh();
-  const repoEl = $("#ghRepo"), pathEl = $("#ghPath"), branchEl = $("#ghBranch"), tokenEl = $("#ghToken");
-  
-  if(repoEl) repoEl.value = c.repo || "";
-  if(pathEl) pathEl.value = c.path || "data/backup.json";
-  if(branchEl) branchEl.value = c.branch || "main";
-  if(tokenEl) tokenEl.value = c.token || "";
-  syncUI();
-}
-
 function saveSync(){
   const c = gh();
   const repoEl = $("#ghRepo"), pathEl = $("#ghPath"), branchEl = $("#ghBranch"), tokenEl = $("#ghToken");
@@ -2257,27 +2294,37 @@ function saveSync(){
   if(branchEl) c.branch = branchEl.value.trim() || "main";
   if(tokenEl) c.token = tokenEl.value.trim();
   
-  try{
-    localStorage.setItem(GH_KEY, JSON.stringify(c));
-  }catch(e){}
+  safeSetStorage(GH_KEY, JSON.stringify(c));
   
   save(); 
   syncUI();
 }
 
+function bindSyncInputs(){
+  ["#ghRepo", "#ghPath", "#ghBranch", "#ghToken"].forEach(sel => {
+    const el = $(sel);
+    if(el){
+      el.oninput = saveSync;
+      el.onchange = saveSync;
+      el.onblur = saveSync; 
+    }
+  });
+}
+
+function renderSync(){
+  const c = gh();
+  const repoEl = $("#ghRepo"), pathEl = $("#ghPath"), branchEl = $("#ghBranch"), tokenEl = $("#ghToken");
+  
+  if(repoEl) repoEl.value = c.repo || "";
+  if(pathEl) pathEl.value = c.path || "data/backup.json";
+  if(branchEl) branchEl.value = c.branch || "main";
+  if(tokenEl) tokenEl.value = c.token || "";
+  
+  bindSyncInputs();
+  syncUI();
+}
+
 /* ---------- wiring ---------- */
-document.addEventListener("input", e => {
-  if (["ghRepo", "ghPath", "ghBranch", "ghToken"].includes(e.target.id)) {
-    saveSync();
-  }
-});
-
-document.addEventListener("change", e => {
-  if (["ghRepo", "ghPath", "ghBranch", "ghToken"].includes(e.target.id)) {
-    saveSync();
-  }
-});
-
 const ghAutoBtn = $("#ghAuto");
 if(ghAutoBtn) ghAutoBtn.onclick = ()=>{ gh().auto = !gh().auto; saveSync();
   logIt("data","ok", gh().auto ? "סנכרון אוטומטי הופעל" : "סנכרון אוטומטי כובה", ""); };
@@ -2296,7 +2343,7 @@ const ghForgetBtn = $("#ghForget");
 if(ghForgetBtn) ghForgetBtn.onclick = ()=>confirmModal("ניתוק מהענן",
   "הטוקן והפרטים יימחקו מהמכשיר הזה. הגיבויים שכבר עלו לגיטהאב יישארו שם.","ניתוק", ()=>{
     gh().token = ""; gh().repo = ""; gh().lastSha = ""; 
-    try{ localStorage.removeItem(GH_KEY); }catch(e){}
+    safeRemoveStorage(GH_KEY);
     save(); renderSync();
     logIt("sync","warn","נותק החיבור לגיטהאב","הטוקן נמחק מהמכשיר"); toast("נותק מהענן","warn"); });
 
@@ -2401,7 +2448,7 @@ function productModal(id, forcePrivate=false){
         <div class="field"><label>יקב</label><input type="text" id="pWin" value="${esc(p.winery||"")}" placeholder="שם היקב"></div>
         <div class="field"><label>בציר</label><input type="text" id="pVin" value="${esc(p.vintage||"")}" placeholder="2021"></div>
         <div class="field"><label>זן ענבים</label><input type="text" id="pVar" value="${esc(p.varietal||"")}" placeholder="מרלו / שרדונה"></div>
-        <div class="field"><label>סוג יין</label><input type="text" id="pCat" value="${esc(p.cat)}" list="catList" placeholder="אדום / לבן / רוזה">
+        <div class="field"><label>סוג ייין</label><input type="text" id="pCat" value="${esc(p.cat)}" list="catList" placeholder="אדום / לבן / רוזה">
           <datalist id="catList">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
         <div class="field"><label>אזור</label><input type="text" id="pReg" value="${esc(p.region||"")}" placeholder="גליל עליון"></div>
         <div class="field"><label>נפח בקבוק <span class="hint">— מ״ל</span></label><input type="number" id="pVol" step="any" value="${p.vol===""?"":n(p.vol)||750}"></div>
@@ -2580,7 +2627,7 @@ function ruleModal(id){
   openModal(`
     <div class="modal-h"><div class="modal-t">${id?"עריכת כלל":"כלל התראה חדש"}</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
     <div class="modal-b">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">כלל בודק כל יין במחסן. כשהתנאי מתקיים — נוצרת התראה.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">כלל בודק כל ייין במחסן. כשהתנאי מתקיים — נוצרת התראה.</p>
       <div class="form-grid">
         <div class="field full"><label>שם הכלל</label><input type="text" id="rName" value="${esc(r.name)}" placeholder="לדוגמה: חוסר קריטי ביין"></div>
         <div class="field"><label>מה בודקים</label><select id="rField">${Object.entries(FIELDS).map(([k,v])=>`<option value="${k}" ${k===r.field?"selected":""}>${v.label}</option>`).join("")}</select></div>
@@ -2660,7 +2707,7 @@ function renderSettings(){
   if(oName) oName.textContent = DB.settings.org;
   document.title = DB.settings.org + " — ניהול מלאי";
 
-  let size = 0; try{ size = (localStorage.getItem(KEY)||"").length; }catch(e){}
+  let size = 0; try{ size = (safeGetStorage(KEY)||"").length; }catch(e){}
   const kb = size/1024, pct = Math.min(100, kb/5120*100);
   const imgs = DB.products.filter(p=>p.img).length;
   const sInfo = $("#storeInfo");
@@ -2674,7 +2721,9 @@ function renderSettings(){
 
 ["#setOrg","#setCur","#setStd","#setExp"].forEach(s=>{
   document.addEventListener("change", e=>{
-    if(!e.target.closest(s)) return;
+    if(!e || !e.target) return;
+    const target = e.target.nodeType === 3 ? e.target.parentNode : e.target;
+    if(!target.closest(s)) return;
     const sOrg = $("#setOrg"), sCur = $("#setCur"), sStd = $("#setStd"), sExp = $("#setExp");
     DB.settings.org = sOrg ? sOrg.value.trim() || "מחסן" : "מחסן";
     DB.settings.currency = sCur ? sCur.value : "₪";
@@ -2756,38 +2805,43 @@ function loadDemo(){
   toast("נטענו 10 יינות, חובות ו־60 ימי תנועות לדוגמה","ok");
 }
 
-/* ---- global events ---- */
+/* ---- global events SAFE ---- */
 document.addEventListener("click", e=>{
-  const t = e.target;
-  const nav = t.closest("[data-view]");           if(nav) return go(nav.dataset.view);
-  const gt  = t.closest("[data-goto]");           if(gt)  return go(gt.dataset.goto);
+  if(!e || !e.target) return;
+  const t = e.target.nodeType === 3 ? e.target.parentNode : e.target;
+  if(!t || typeof t.closest !== "function") return;
+
+  const nav = t.closest("[data-view]");           if(nav && nav.dataset) return go(nav.dataset.view);
+  const gt  = t.closest("[data-goto]");           if(gt && gt.dataset)  return go(gt.dataset.goto);
   const veilEl = $("#veil");
   if(t.closest("[data-close]") || (veilEl && t===veilEl)) return closeModal();
 
-  const lk = t.closest("[data-link]"); if(lk) return shareLink("#/product/" + encodeURIComponent(lk.dataset.link));
-  const pv = t.closest("[data-pv]");   if(pv) { ui.pv = pv.dataset.pv; return renderProducts(); }
-  const mv = t.closest("[data-mv]");  if(mv)  return quickMove(mv.dataset.id, mv.dataset.mv);
-  const ed = t.closest("[data-edit]"); if(ed) return productModal(ed.dataset.edit);
-  const op = t.closest("[data-openprod]"); if(op) return openProductPage(op.dataset.openprod);
-  const mf = t.closest("[data-mvfull]");   if(mf) return moveModal(mf.dataset.id, mf.dataset.mvfull);
+  const lk = t.closest("[data-link]"); if(lk && lk.dataset) return shareLink("#/product/" + encodeURIComponent(lk.dataset.link));
+  const pv = t.closest("[data-pv]");   if(pv && pv.dataset) { ui.pv = pv.dataset.pv; return renderProducts(); }
+  const mv = t.closest("[data-mv]");  if(mv && mv.dataset)  return quickMove(mv.dataset.id, mv.dataset.mv);
+  const ed = t.closest("[data-edit]"); if(ed && ed.dataset) return productModal(ed.dataset.edit);
+  const op = t.closest("[data-openprod]"); if(op && op.dataset) return openProductPage(op.dataset.openprod);
+  const mf = t.closest("[data-mvfull]");   if(mf && mf.dataset) return moveModal(mf.dataset.id, mf.dataset.mvfull);
 
   /* Order & Debt Handlers */
-  const ac = t.closest("[data-addcart]"); if(ac) return addToCart(ac.dataset.addcart);
+  const ac = t.closest("[data-addcart]"); if(ac && ac.dataset) return addToCart(ac.dataset.addcart);
   const cc = t.closest("[data-cartchg]");
-  if(cc){
+  if(cc && cc.dataset){
     const idx = parseInt(cc.dataset.cartchg);
     const dir = parseInt(cc.dataset.dir);
-    ui.cart[idx].qty = Math.max(1, ui.cart[idx].qty + dir);
-    return renderCart();
+    if(ui.cart[idx]){
+      ui.cart[idx].qty = Math.max(1, ui.cart[idx].qty + dir);
+      return renderCart();
+    }
   }
   const cr = t.closest("[data-cartrem]");
-  if(cr){
+  if(cr && cr.dataset){
     ui.cart.splice(parseInt(cr.dataset.cartrem), 1);
     return renderCart();
   }
-  const pd = t.closest("[data-paydebt]"); if(pd) return payDebtModal(pd.dataset.paydebt);
+  const pd = t.closest("[data-paydebt]"); if(pd && pd.dataset) return payDebtModal(pd.dataset.paydebt);
   const dd = t.closest("[data-deldebt]");
-  if(dd){
+  if(dd && dd.dataset){
     return confirmModal("מחיקת חוב", "האם למחוק את החוב מהפנקס?", "מחיקה", ()=>{
       DB.debts = DB.debts.filter(x=>x.id!==dd.dataset.deldebt);
       save(); refresh(); renderDebtsPage(); toast("החוב נמחק","warn");
@@ -2795,47 +2849,52 @@ document.addEventListener("click", e=>{
   }
 
   const de = t.closest("[data-del]");
-  if(de){ const p = DB.products.find(x=>x.id===de.dataset.del); if(!p) return;
+  if(de && de.dataset){ const p = DB.products.find(x=>x.id===de.dataset.del); if(!p) return;
     return confirmModal("מחיקת יין", `${p.name} יימחק מהמחסן, כולל התמונה. התנועות ההיסטוריות יישארו ביומן. אי אפשר לבטל.`, "מחיקה", ()=>{
       DB.products = DB.products.filter(x=>x.id!==p.id); save(); refresh(); toast("היין נמחק","warn"); }); }
 
   const dm = t.closest("[data-delmv]");
-  if(dm){ const m = DB.moves.find(x=>x.id===dm.dataset.delmv); if(!m) return;
+  if(dm && dm.dataset){ const m = DB.moves.find(x=>x.id===dm.dataset.delmv); if(!m) return;
     return confirmModal("ביטול תנועה","התנועה תימחק מהיומן והמלאי יעודכן בחזרה בהתאם.","ביטול התנועה",()=>{
       const p = DB.products.find(x=>x.id===m.pid);
       if(p){ p.qty = m.type==="adjust" ? n(m.before) : n(p.qty) - MOVE[m.type].sign*n(m.qty); if(p.qty<0) p.qty=0; }
       DB.moves = DB.moves.filter(x=>x.id!==m.id); save(); refresh(); toast("התנועה בוטלה","warn"); }); }
 
-  const re = t.closest("[data-ruleedit]"); if(re) return ruleModal(re.dataset.ruleedit);
+  const re = t.closest("[data-ruleedit]"); if(re && re.dataset) return ruleModal(re.dataset.ruleedit);
   const ro = t.closest("[data-ruleon]");
-  if(ro){ const r = DB.rules.find(x=>x.id===ro.dataset.ruleon); if(r){ r.on=!r.on; save(); renderAlerts(); renderDash();
+  if(ro && ro.dataset){ const r = DB.rules.find(x=>x.id===ro.dataset.ruleon); if(r){ r.on=!r.on; save(); renderAlerts(); renderDash();
     return toast(r.on?"הכלל הופעל":"הכלל הושבת","ok"); } }
   const rd = t.closest("[data-ruledel]");
-  if(rd){ const id = rd.dataset.ruledel;
+  if(rd && rd.dataset){ const id = rd.dataset.ruledel;
     return confirmModal("מחיקת כלל","הכלל יוסר וההתראות שנוצרו ממנו ייעלמו.","מחיקה",()=>{
       DB.rules = DB.rules.filter(x=>x.id!==id); save(); refresh(); toast("הכלל נמחק","warn"); }); }
 
   const nv = t.closest("[data-nav]");
-  if(nv && !t.closest("button") && !t.closest("a")){ location.hash = nv.dataset.nav; return; }
+  if(nv && nv.dataset && !t.closest("button") && !t.closest("a")){ location.hash = nv.dataset.nav; return; }
 
   const sk = t.closest("th[data-sk]");
-  if(sk){ const k = sk.dataset.sk; ui.sortP = {k, d: ui.sortP.k===k ? -ui.sortP.d : 1}; return renderProducts(); }
+  if(sk && sk.dataset){ const k = sk.dataset.sk; ui.sortP = {k, d: ui.sortP.k===k ? -ui.sortP.d : 1}; return renderProducts(); }
   const mk = t.closest("th[data-mk]");
-  if(mk){ const k = mk.dataset.mk; ui.sortM = {k, d: ui.sortM.k===k ? -ui.sortM.d : 1}; return renderMoves(); }
+  if(mk && mk.dataset){ const k = mk.dataset.mk; ui.sortM = {k, d: ui.sortM.k===k ? -ui.sortM.d : 1}; return renderMoves(); }
 });
 
 document.addEventListener("input", e=>{
-  if(e.target.dataset && e.target.dataset.cartset !== undefined){
-    const idx = parseInt(e.target.dataset.cartset);
-    const val = Math.max(1, parseInt(e.target.value)||1);
-    ui.cart[idx].qty = val;
-    renderCart();
+  if(!e || !e.target) return;
+  const target = e.target.nodeType === 3 ? e.target.parentNode : e.target;
+  if(target && target.dataset && target.dataset.cartset !== undefined){
+    const idx = parseInt(target.dataset.cartset);
+    const val = Math.max(1, parseInt(target.value)||1);
+    if(ui.cart[idx]){
+      ui.cart[idx].qty = val;
+      renderCart();
+    }
   }
 });
 
 document.addEventListener("keydown", e=>{
+  if(!e) return;
   if(e.key==="Escape") closeModal();
-  if(e.key==="/" && !/input|textarea|select/i.test(e.target.tagName)){ 
+  if(e.key==="/" && e.target && !/input|textarea|select/i.test(e.target.tagName)){ 
     e.preventDefault(); 
     const gs = $("#globalSearch");
     if(gs) gs.focus(); 
@@ -2843,7 +2902,7 @@ document.addEventListener("keydown", e=>{
 });
 
 const mainSearch = $("#globalSearch");
-if(mainSearch) mainSearch.addEventListener("input", e=>{ ui.q = e.target.value; renderProducts(); renderPrivateFridge(); renderMoves(); });
+if(mainSearch) mainSearch.addEventListener("input", e=>{ if(e && e.target) ui.q = e.target.value; renderProducts(); renderPrivateFridge(); renderMoves(); });
 
 const oSearch = $("#orderSearch");
 if(oSearch) oSearch.addEventListener("input", renderOrderPage);
@@ -2864,6 +2923,7 @@ if(sOrderBtn) sOrderBtn.onclick = submitOrder;
 const rQuick = $("#rQuick");
 if(rQuick){
   rQuick.addEventListener("change", e=>{
+    if(!e || !e.target) return;
     const v = e.target.value; if(!v) return;
     const rf = $("#rFrom"), rt = $("#rTo");
     if(v==="m"){ 
@@ -2900,7 +2960,7 @@ if(repCsvBtn) repCsvBtn.onclick = ()=>{ const {f,t}=repRange(); const allowPriva
 const bkExp = $("#bkExport"), bkImp = $("#bkImport"), bkF = $("#bkFile"), bkD = $("#bkDemo"), bkW = $("#bkWipe");
 if(bkExp) bkExp.onclick = exportBackup;
 if(bkImp && bkF) bkImp.onclick = ()=>bkF.click();
-if(bkF) bkF.onchange = e=>{ if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=""; };
+if(bkF) bkF.onchange = e=>{ if(e && e.target && e.target.files && e.target.files[0]) importBackup(e.target.files[0]); if(e.target) e.target.value=""; };
 if(bkD) bkD.onclick = ()=>confirmModal("טעינת נתוני הדגמה","הנתונים הקיימים יוחלפו בנתוני דוגמה. מומלץ להוריד גיבוי קודם.","טעינה",loadDemo);
 if(bkW) bkW.onclick = ()=>confirmModal("מחיקת כל הנתונים","כל היינות, התמונות, התנועות והכללים יימחקו מהמכשיר הזה. אין דרך לשחזר בלי קובץ גיבוי.","מחיקה מלאה",()=>{
   DB = structuredClone(DEF); DB.rules = defaultRules(); save(); applyTheme(); renderSettings(); refresh(); toast("הנתונים נמחקו","warn"); });
@@ -2920,7 +2980,7 @@ function net(){
   if(nTxt) nTxt.textContent = on ? "מחובר לרשת" : "עובד אופליין";
 }
 addEventListener("online", net); addEventListener("offline", net);
-addEventListener("beforeunload", ()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} });
+addEventListener("beforeunload", ()=>{ safeSetStorage(KEY, JSON.stringify(DB)); });
 
 /* ---- boot ---- */
 load();
