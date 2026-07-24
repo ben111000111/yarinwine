@@ -715,7 +715,7 @@ a.gcard{text-decoration:none;color:inherit}
           <div class="card"><div class="card-h"><span class="card-t">מובילי מכירות</span></div><div class="card-b"><div id="repChart2"></div></div></div>
         </div>
         <div class="grid mt g-2" id="repGrid2">
-          <div class="card"><div class="card-h"><span class="card-t">מכירות לפי סוג יין</span></div><div class="card-b"><div id="repChart3"></div></div></div>
+          <div class="card"><div class="card-h"><span class="card-t">מכירות לפי סוג ייין</span></div><div class="card-b"><div id="repChart3"></div></div></div>
           <div class="card"><div class="card-h"><span class="card-t">ערך המלאי לפי סוג יין</span></div><div class="card-b"><div id="repChart4"></div></div></div>
         </div>
         <div class="card mt">
@@ -821,16 +821,13 @@ a.gcard{text-decoration:none;color:inherit}
 
 <script>
 "use strict";
-/* ==========================================================
-   מחסן — מערכת ניהול מלאי | קובץ יחיד, ללא תלויות חיצוניות
-   ========================================================== */
 
 /* ==========================================================
    הגדרות חיבור קבועות ל-GitHub (אופציונלי)
-   תוכל למלא כאן את הפרטים כדי שלא תצטרך להזין אותם בממשק:
+   ניתן למלא כאן כדי שלא תצטרך להזין בממשק בכל מכשיר:
    ========================================================== */
 const HARDCODED_GH = {
-  repo: "ben111000111/yeynot-backup",      //
+  repo: "",      // לדוגמה: "username/yeynot-data"
   path: "data/backup.json",
   branch: "main",
   token: "",     // לדוגמה: "github_pat_11AAA..."
@@ -897,7 +894,8 @@ function save(){
   saveT = setTimeout(()=>{
     try{
       localStorage.setItem(KEY, JSON.stringify(DB));
-      $("#savedTxt").textContent = "נשמר " + new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+      const el = $("#savedTxt");
+      if(el) el.textContent = "נשמר " + new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
     }catch(e){
       toast("נגמר שטח האחסון בדפדפן — כנראה בגלל תמונות. הורד גיבוי ומחק תמונות של יינות ישנים.","err");
     }
@@ -919,10 +917,12 @@ const daysBetween = (a,b) => Math.round((new Date(b)-new Date(a))/864e5);
 const svgIco = id => `<svg fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
 
 function toast(msg, kind="ok"){
+  const toasts = $("#toasts");
+  if(!toasts) return;
   const el = document.createElement("div");
   el.className = "toast " + kind;
   el.textContent = msg;
-  $("#toasts").appendChild(el);
+  toasts.appendChild(el);
   setTimeout(()=>{ el.style.transition="opacity .25s, transform .25s"; el.style.opacity="0"; el.style.transform="translateX(20px)"; setTimeout(()=>el.remove(),260); }, 3000);
 }
 
@@ -1092,6 +1092,7 @@ function dailySeries(from, to, allowPrivate=false){
 const CV = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 
 function chartBars(host, {labels, series, yFmt=(v=>qty(v)), maxLabels=14}){
+  if(!host) return;
   const W=640, H=232, PL=8, PR=52, PT=14, PB=28;
   const plotW = W-PL-PR, plotH = H-PT-PB;
   const all = series.flatMap(s=>s.values);
@@ -1127,6 +1128,7 @@ function chartBars(host, {labels, series, yFmt=(v=>qty(v)), maxLabels=14}){
 }
 
 function chartHBars(host, {rows, fmt=(v=>qty(v)), color}){
+  if(!host) return;
   if(!rows.length){ host.innerHTML = emptyBox("אין נתונים בטווח שנבחר","רשום תנועות מכירה כדי לראות כאן דירוג."); return; }
   const LW=132, W=640, rowH=30, PT=6;
   const H = PT + rows.length*rowH + 6;
@@ -1183,9 +1185,12 @@ function linkModal(url){
     <div class="modal-b"><p style="font-size:13px;color:var(--muted);margin-bottom:12px">העתק את הכתובת ושלח אותה. הקישור נפתח ישירות בדף הזה.</p>
     <div class="link-box"><input type="text" id="lkUrl" value="${esc(url)}" readonly><button class="btn primary" id="lkCopy">העתקה</button></div></div>`);
   const i = $("#lkUrl");
-  i.onclick = ()=>i.select();
-  i.select();
-  $("#lkCopy").onclick = ()=>{ i.select(); try{ document.execCommand("copy"); toast("הקישור הועתק","ok"); }catch(e){ toast("העתק ידנית מהשדה","warn"); } };
+  if(i){
+    i.onclick = ()=>i.select();
+    i.select();
+  }
+  const copyBtn = $("#lkCopy");
+  if(copyBtn) copyBtn.onclick = ()=>{ if(i) i.select(); try{ document.execCommand("copy"); toast("הקישור הועתק","ok"); }catch(e){ toast("העתק ידנית מהשדה","warn"); } };
 }
 function route(){
   if(routing) return;
@@ -1196,13 +1201,22 @@ function route(){
   const q = new URLSearchParams(qs||"");
   if(parts[0]==="product" || parts[0]==="wine"){ return openProductPage(parts[1]); }
   if(ROUTES.includes(parts[0])){
-    if(parts[0]==="reports"){ if(q.get("from")) $("#rFrom").value = q.get("from"); if(q.get("to")) $("#rTo").value = q.get("to"); }
+    if(parts[0]==="reports"){ 
+      const rf = $("#rFrom"), rt = $("#rTo");
+      if(q.get("from") && rf) rf.value = q.get("from"); 
+      if(q.get("to") && rt) rt.value = q.get("to"); 
+    }
     if(parts[0]==="products"){
-      $("#fStatus").value = q.get("status") || "";
+      const fs = $("#fStatus");
+      if(fs) fs.value = q.get("status") || "";
       ui.pendingCat = q.get("cat") || "";
       if(q.get("view")) ui.pv = q.get("view");
     }
-    if(q.get("q")!=null){ $("#globalSearch").value = q.get("q"); ui.q = q.get("q"); }
+    if(q.get("q")!=null){ 
+      const gs = $("#globalSearch");
+      if(gs) gs.value = q.get("q"); 
+      ui.q = q.get("q"); 
+    }
     renderProducts(); renderPrivateFridge(); renderMoves();
     return go(parts[0]);
   }
@@ -1215,15 +1229,19 @@ function go(v){
   $$(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v));
   const navV = v==="product" ? "products" : v;
   $$("[data-view]").forEach(b=>b.classList.toggle("on", b.dataset.view===navV));
-  $("#pgTitle").textContent = PAGES[v][0];
-  $("#pgSub").textContent   = PAGES[v][1];
-  $(".scroll").scrollTop = 0;
+  const tEl = $("#pgTitle"), sEl = $("#pgSub");
+  if(tEl) tEl.textContent = PAGES[v][0];
+  if(sEl) sEl.textContent = PAGES[v][1];
+  const sc = $(".scroll");
+  if(sc) sc.scrollTop = 0;
+
   if(v==="reports") renderReports();
   else if(v==="order") renderOrderPage();
   else if(v==="debts") renderDebtsPage();
   else if(v==="log"){ if(typeof renderLog==="function") renderLog(); setHash("#/log"); }
   else if(v==="products") renderProducts();
   else if(v==="privateFridge") renderPrivateFridge();
+  else if(v==="settings"){ renderSettings(); renderSync(); setHash("#/settings"); }
   else if(v!=="product") setHash("#/"+v);
 }
 
@@ -1238,18 +1256,22 @@ function renderDash(){
   const st = statsFor(from,to,false);
 
   const repHref = `#/reports?from=${from}&to=${to}`;
-  $("#kpis").innerHTML = [
-    ["יינות במחסן", activeProducts.length.toLocaleString("he-IL"), "פריטים מנוהלים", "", "#/products"],
-    ["ערך המלאי", money(value), "לפי מחיר עלות", "", repHref],
-    ["מתחת לתקן", below, below? "לפתיחת רשימת החוסרים" : "כל היינות בתקן", below?"k-warn":"k-ok", "#/products?status=warn"],
-    ["אזלו מהמלאי", crit, crit? "טפל בהקדם" : "אין חוסרים", crit?"k-crit":"k-ok", "#/products?status=crit"],
-    ["הכנסות (30 ימים)", money(st.revenue), `${qty(st.unitsSold)} בקבוקים נמכרו`, "", repHref],
-    ["רווח גולמי (30 ימים)", money(st.profit), st.revenue>0 ? Math.round(st.profit/st.revenue*100)+"% שיעור רווח" : "אין מכירות", "k-ok", repHref]
-  ].map(([l,v,f,c,h])=>`<a class="kpi ${c}" href="${h}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></a>`).join("");
+  const kpisEl = $("#kpis");
+  if(kpisEl){
+    kpisEl.innerHTML = [
+      ["יינות במחסן", activeProducts.length.toLocaleString("he-IL"), "פריטים מנוהלים", "", "#/products"],
+      ["ערך המלאי", money(value), "לפי מחיר עלות", "", repHref],
+      ["מתחת לתקן", below, below? "לפתיחת רשימת החוסרים" : "כל היינות בתקן", below?"k-warn":"k-ok", "#/products?status=warn"],
+      ["אזלו מהמלאי", crit, crit? "טפל בהקדם" : "אין חוסרים", crit?"k-crit":"k-ok", "#/products?status=crit"],
+      ["הכנסות (30 ימים)", money(st.revenue), `${qty(st.unitsSold)} בקבוקים נמכרו`, "", repHref],
+      ["רווח גולמי (30 ימים)", money(st.profit), st.revenue>0 ? Math.round(st.profit/st.revenue*100)+"% שיעור רווח" : "אין מכירות", "k-ok", repHref]
+    ].map(([l,v,f,c,h])=>`<a class="kpi ${c}" href="${h}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></a>`).join("");
+  }
 
   const f14 = iso(Date.now()-13*864e5);
   const ser = dailySeries(f14, to, false);
-  $("#dashRange").textContent = dShort(f14) + " – " + dShort(to);
+  const rangeEl = $("#dashRange");
+  if(rangeEl) rangeEl.textContent = dShort(f14) + " – " + dShort(to);
   chartBars($("#dashChart"), {
     labels: ser.days.map(d=>dShort(d).slice(0,5)),
     series: [
@@ -1258,34 +1280,44 @@ function renderDash(){
     ]
   });
 
-  $("#dashAlerts").innerHTML = al.length
-    ? al.slice(0,6).map(a=>alertRow(a)).join("")
-    : emptyBox("אין התראות פתוחות","כל הפריטים עומדים בכללים שהגדרת.");
+  const alertsEl = $("#dashAlerts");
+  if(alertsEl){
+    alertsEl.innerHTML = al.length
+      ? al.slice(0,6).map(a=>alertRow(a)).join("")
+      : emptyBox("אין התראות פתוחות","כל הפריטים עומדים בכללים שהגדרת.");
+  }
 
   const gaps = activeProducts.filter(p=>n(p.std)>0).map(p=>({p, gap:n(p.std)-n(p.qty)}))
     .filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,6);
-  $("#dashGapTbl").innerHTML = gaps.length ? `
-    <thead><tr><th class="no-sort">יין</th><th class="no-sort">מצב מול תקן</th><th class="no-sort">חסר להשלמה</th></tr></thead>
-    <tbody>${gaps.map(({p,gap})=>`<tr data-nav="#/product/${encodeURIComponent(p.sku||p.id)}">
-      <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a><div class="t-sku">${esc(wineLine(p)||p.sku||"—")}</div></div></div></td>
-      <td style="min-width:130px">${gauge(p)}</td>
-      <td><span class="tag warn num">${qty(gap)} ${esc(p.unit||"")}</span></td></tr>`).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyBox("כל היינות מעל התקן","אין פערים להשלמה כרגע.")}</td></tr></tbody>`;
+  const gapTbl = $("#dashGapTbl");
+  if(gapTbl){
+    gapTbl.innerHTML = gaps.length ? `
+      <thead><tr><th class="no-sort">יין</th><th class="no-sort">מצב מול תקן</th><th class="no-sort">חסר להשלמה</th></tr></thead>
+      <tbody>${gaps.map(({p,gap})=>`<tr data-nav="#/product/${encodeURIComponent(p.sku||p.id)}">
+        <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a><div class="t-sku">${esc(wineLine(p)||p.sku||"—")}</div></div></div></td>
+        <td style="min-width:130px">${gauge(p)}</td>
+        <td><span class="tag warn num">${qty(gap)} ${esc(p.unit||"")}</span></td></tr>`).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyBox("כל היינות מעל התקן","אין פערים להשלמה כרגע.")}</td></tr></tbody>`;
+  }
 
   const recent = [...DB.moves].filter(m=>{
     const p = DB.products.find(x=>x.id===m.pid);
     return !p || !p.isPrivate;
   }).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
 
-  $("#dashMovesTbl").innerHTML = recent.length ? `
-    <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">יין</th><th class="no-sort">סוג</th><th class="no-sort">כמות</th></tr></thead>
-    <tbody>${recent.map(m=>{ const p = DB.products.find(x=>x.id===m.pid); const T = MOVE[m.type];
-      return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}><td class="num" style="font-size:12px">${dShort(m.date)}</td>
-        <td>${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a>`:`<span class="t-name">(נמחק)</span>`}</td>
-        <td><span class="tag ${T.tag}">${T.label}</span></td>
-        <td class="num">${m.type==="adjust"?"→ ":""}${qty(m.qty)}</td></tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyBox("עוד לא נרשמו תנועות","כל כניסה, יציאה או מכירה תופיע כאן.")}</td></tr></tbody>`;
+  const movesTbl = $("#dashMovesTbl");
+  if(movesTbl){
+    movesTbl.innerHTML = recent.length ? `
+      <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">יין</th><th class="no-sort">סוג</th><th class="no-sort">כמות</th></tr></thead>
+      <tbody>${recent.map(m=>{ const p = DB.products.find(x=>x.id===m.pid); const T = MOVE[m.type];
+        return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}><td class="num" style="font-size:12px">${dShort(m.date)}</td>
+          <td>${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a>`:`<span class="t-name">(נמחק)</span>`}</td>
+          <td><span class="tag ${T.tag}">${T.label}</span></td>
+          <td class="num">${m.type==="adjust"?"→ ":""}${qty(m.qty)}</td></tr>`;}).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyBox("עוד לא נרשמו תנועות","כל כניסה, יציאה או מכירה תופיע כאן.")}</td></tr></tbody>`;
+  }
 }
+
 function alertRow(a, link=true){
   const sev = a.rule.sev;
   const ico = sev==="crit" ? "i-alert" : sev==="warn" ? "i-bell" : "i-clock";
@@ -1301,20 +1333,24 @@ function alertRow(a, link=true){
    מערכת הזמנות ופנקס חובות
    ========================================================== */
 function renderOrderPage(){
-  const search = ($("#orderSearch") ? $("#orderSearch").value : "").toLowerCase().trim();
+  const searchEl = $("#orderSearch");
+  const search = (searchEl ? searchEl.value : "").toLowerCase().trim();
   const catalog = DB.products.filter(p=>!p.isPrivate && (
     !search || `${p.name} ${p.winery||""} ${p.sku||""}`.toLowerCase().includes(search)
   ));
 
-  $("#orderCatalogTbl").innerHTML = catalog.length ? `
-    <thead><tr><th class="no-sort">יין</th><th class="no-sort">במלאי</th><th class="no-sort">מחיר</th><th class="no-sort"></th></tr></thead>
-    <tbody>${catalog.map(p=>`<tr>
-      <td><div class="t-cell">${thumb(p)}<div><div class="t-name">${esc(p.name)}</div><div class="t-sku">${esc(wineLine(p))}</div></div></div></td>
-      <td class="num">${qty(p.qty)}</td>
-      <td class="num">${money(p.price||0)}</td>
-      <td><button class="btn sm primary" data-addcart="${p.id}">${svgIco("i-plus")} הוסף</button></td>
-    </tr>`).join("")}</tbody>
-  ` : `<tbody><tr><td colspan="4">${emptyBox("לא נמצאו יינות","נסה למחוק את החיפוש")}</td></tr></tbody>`;
+  const catTbl = $("#orderCatalogTbl");
+  if(catTbl){
+    catTbl.innerHTML = catalog.length ? `
+      <thead><tr><th class="no-sort">יין</th><th class="no-sort">במלאי</th><th class="no-sort">מחיר</th><th class="no-sort"></th></tr></thead>
+      <tbody>${catalog.map(p=>`<tr>
+        <td><div class="t-cell">${thumb(p)}<div><div class="t-name">${esc(p.name)}</div><div class="t-sku">${esc(wineLine(p))}</div></div></div></td>
+        <td class="num">${qty(p.qty)}</td>
+        <td class="num">${money(p.price||0)}</td>
+        <td><button class="btn sm primary" data-addcart="${p.id}">${svgIco("i-plus")} הוסף</button></td>
+      </tr>`).join("")}</tbody>
+    ` : `<tbody><tr><td colspan="4">${emptyBox("לא נמצאו יינות","נסה למחוק את החיפוש")}</td></tr></tbody>`;
+  }
 
   renderCart();
 }
@@ -1338,7 +1374,8 @@ function renderCart(){
   if(!cartList) return;
   if(!ui.cart.length){
     cartList.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">הסל ריק. בחר יינות מהרשימה.</div>`;
-    $("#cartTotal").textContent = money(0);
+    const totEl = $("#cartTotal");
+    if(totEl) totEl.textContent = money(0);
     return;
   }
   let total = 0;
@@ -1356,14 +1393,16 @@ function renderCart(){
       <button class="mini neg" data-cartrem="${idx}">${svgIco("i-trash")}</button>
     </div>`;
   }).join("");
-  $("#cartTotal").textContent = money(total);
+  const totEl = $("#cartTotal");
+  if(totEl) totEl.textContent = money(total);
 }
 
 function submitOrder(){
   if(!ui.cart.length){ toast("הסל ריק!","err"); return; }
-  const customer = $("#ordCustomer").value.trim() || "לקוח מזדמן";
-  const payType = $("#ordPayType").value;
-  const note = $("#ordNote").value.trim();
+  const custEl = $("#ordCustomer"), payEl = $("#ordPayType"), noteEl = $("#ordNote");
+  const customer = (custEl ? custEl.value.trim() : "") || "לקוח מזדמן";
+  const payType = payEl ? payEl.value : "paid";
+  const note = noteEl ? noteEl.value.trim() : "";
   const orderId = uid();
   let total = 0;
 
@@ -1391,52 +1430,62 @@ function submitOrder(){
   }
 
   ui.cart = [];
-  $("#ordCustomer").value = "";
-  $("#ordNote").value = "";
+  if(custEl) custEl.value = "";
+  if(noteEl) noteEl.value = "";
   save();
   refresh();
   renderOrderPage();
 }
 
 function renderDebtsPage(){
-  const search = ($("#debtSearch") ? $("#debtSearch").value : "").toLowerCase().trim();
+  const searchEl = $("#debtSearch");
+  const search = (searchEl ? searchEl.value : "").toLowerCase().trim();
   const list = DB.debts.filter(d => !search || d.customer.toLowerCase().includes(search));
   
   const openDebts = DB.debts.filter(d=>d.status==="open");
   const totalDebtSum = openDebts.reduce((s,d)=>s + (d.amount - d.paid), 0);
 
-  $("#debtKpis").innerHTML = [
-    ["סה״כ חובות פתוחים", money(totalDebtSum), `${openDebts.length} לקוחות בהקפה`, openDebts.length?"k-warn":"k-ok"],
-    ["הזמנות ששולמו במלואן", DB.debts.filter(d=>d.status==="closed").length, "הזמנות לסגירה", "k-ok"]
-  ].map(([l,v,f,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></div>`).join("");
+  const kpisEl = $("#debtKpis");
+  if(kpisEl){
+    kpisEl.innerHTML = [
+      ["סה״כ חובות פתוחים", money(totalDebtSum), `${openDebts.length} לקוחות בהקפה`, openDebts.length?"k-warn":"k-ok"],
+      ["הזמנות ששולמו במלואן", DB.debts.filter(d=>d.status==="closed").length, "הזמנות לסגירה", "k-ok"]
+    ].map(([l,v,f,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></div>`).join("");
+  }
 
-  $("#debtsTbl").innerHTML = list.length ? `
-    <thead><tr>
-      <th class="no-sort">תאריך</th><th class="no-sort">שם הלקוח</th><th class="no-sort">סכום מקורי</th>
-      <th class="no-sort">שולם</th><th class="no-sort">יתרת חוב</th><th class="no-sort">סטטוס</th><th class="no-sort"></th>
-    </tr></thead>
-    <tbody>${list.map(d=>{
-      const remain = d.amount - d.paid;
-      return `<tr>
-        <td class="num">${dShort(d.date)}</td>
-        <td class="t-name">${esc(d.customer)}</td>
-        <td class="num">${money(d.amount)}</td>
-        <td class="num" style="color:var(--ok)">${money(d.paid)}</td>
-        <td class="num" style="font-weight:700;color:${remain>0?"var(--crit)":"var(--ok)"}">${money(remain)}</td>
-        <td><span class="tag ${d.status==="open"?"warn":"ok"}">${d.status==="open"?"חוב פתוח":"שולם ונסגר"}</span></td>
-        <td>
-          <div class="t-acts">
-            ${remain > 0 ? `<button class="btn sm primary" data-paydebt="${d.id}">גביית תשלום</button>` : ''}
-            <button class="mini neg" data-deldebt="${d.id}" title="מחיקת חוב">${svgIco("i-trash")}</button>
-          </div>
-        </td>
-      </tr>`;
-    }).join("")}</tbody>
-  ` : `<tbody><tr><td colspan="7">${emptyBox("אין חובות רשומים","כל החובות שולמו או שלא נרשמו הקפות.")}</td></tr></tbody>`;
+  const debtsTbl = $("#debtsTbl");
+  if(debtsTbl){
+    debtsTbl.innerHTML = list.length ? `
+      <thead><tr>
+        <th class="no-sort">תאריך</th><th class="no-sort">שם הלקוח</th><th class="no-sort">סכום מקורי</th>
+        <th class="no-sort">שולם</th><th class="no-sort">יתרת חוב</th><th class="no-sort">סטטוס</th><th class="no-sort"></th>
+      </tr></thead>
+      <tbody>${list.map(d=>{
+        const remain = d.amount - d.paid;
+        return `<tr>
+          <td class="num">${dShort(d.date)}</td>
+          <td class="t-name">${esc(d.customer)}</td>
+          <td class="num">${money(d.amount)}</td>
+          <td class="num" style="color:var(--ok)">${money(d.paid)}</td>
+          <td class="num" style="font-weight:700;color:${remain>0?"var(--crit)":"var(--ok)"}">${money(remain)}</td>
+          <td><span class="tag ${d.status==="open"?"warn":"ok"}">${d.status==="open"?"חוב פתוח":"שולם ונסגר"}</span></td>
+          <td>
+            <div class="t-acts">
+              ${remain > 0 ? `<button class="btn sm primary" data-paydebt="${d.id}">גביית תשלום</button>` : ''}
+              <button class="mini neg" data-deldebt="${d.id}" title="מחיקת חוב">${svgIco("i-trash")}</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join("")}</tbody>
+    ` : `<tbody><tr><td colspan="7">${emptyBox("אין חובות רשומים","כל החובות שולמו או שלא נרשמו הקפות.")}</td></tr></tbody>`;
+  }
 
   const badge = openDebts.length;
-  $("#navDebts").hidden = !badge;
-  $("#navDebts").textContent = badge;
+  const nDebts = $("#navDebts");
+  if(nDebts){
+    nDebts.hidden = !badge;
+    nDebts.textContent = badge;
+  }
 }
 
 function payDebtModal(id){
@@ -1457,26 +1506,31 @@ function payDebtModal(id){
     </div>
   `);
 
-  $("#confirmPayBtn").onclick = ()=>{
-    const amt = n($("#payAmount").value);
-    if(amt <= 0){ toast("הזן סכום תקין","err"); return; }
-    d.paid += amt;
-    if(d.paid >= d.amount){
-      d.paid = d.amount;
-      d.status = "closed";
-    }
-    save();
-    closeModal();
-    refresh();
-    renderDebtsPage();
-    toast("התשלום נרשם בהצלחה!","ok");
-  };
+  const btn = $("#confirmPayBtn");
+  if(btn){
+    btn.onclick = ()=>{
+      const amtEl = $("#payAmount");
+      const amt = amtEl ? n(amtEl.value) : 0;
+      if(amt <= 0){ toast("הזן סכום תקין","err"); return; }
+      d.paid += amt;
+      if(d.paid >= d.amount){
+        d.paid = d.amount;
+        d.status = "closed";
+      }
+      save();
+      closeModal();
+      refresh();
+      renderDebtsPage();
+      toast("התשלום נרשם בהצלחה!","ok");
+    };
+  }
 }
 
 /* ---------- products ---------- */
 function filteredProducts(isPrivateFilter=false){
   const q = ui.q.trim().toLowerCase();
-  const c = $("#fCat")?$("#fCat").value:"", s = $("#fStatus")?$("#fStatus").value:"";
+  const catEl = $("#fCat"), statEl = $("#fStatus");
+  const c = catEl ? catEl.value : "", s = statEl ? statEl.value : "";
   let list = DB.products.filter(p=>{
     if(!!p.isPrivate !== isPrivateFilter) return false;
     if(c && p.cat!==c) return false;
@@ -1493,11 +1547,15 @@ function filteredProducts(isPrivateFilter=false){
   });
   return list;
 }
+
 function renderProducts(){
   const cats = [...new Set(DB.products.filter(p=>!p.isPrivate).map(p=>p.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
-  const want = (ui.pendingCat!=null) ? ui.pendingCat : $("#fCat").value;
+  const catEl = $("#fCat"), statEl = $("#fStatus");
+  const want = (ui.pendingCat!=null) ? ui.pendingCat : (catEl ? catEl.value : "");
   ui.pendingCat = null;
-  $("#fCat").innerHTML = `<option value="">כל סוגי היין</option>` + cats.map(c=>`<option ${c===want?"selected":""}>${esc(c)}</option>`).join("");
+  if(catEl){
+    catEl.innerHTML = `<option value="">כל סוגי היין</option>` + cats.map(c=>`<option ${c===want?"selected":""}>${esc(c)}</option>`).join("");
+  }
   const list = filteredProducts(false);
   const cols = [["name","יין",""],["cat","סוג","c-hide-s"],["vintage","בציר","c-hide-m"],["qty","מלאי מול תקן",""],["status","סטטוס",""],
     ["cost","עלות","c-hide-m"],["price","מכירה",""],["value","ערך","c-hide-m"],["loc","מיקום","c-hide-m"],["expiry","לשתייה עד","c-hide-s"]];
@@ -1509,55 +1567,62 @@ function renderProducts(){
 
   if(ui.view==="products"){
     const qp = new URLSearchParams();
-    if($("#fStatus").value) qp.set("status", $("#fStatus").value);
-    if($("#fCat").value) qp.set("cat", $("#fCat").value);
+    if(statEl && statEl.value) qp.set("status", statEl.value);
+    if(catEl && catEl.value) qp.set("cat", catEl.value);
     if(ui.q.trim()) qp.set("q", ui.q.trim());
     if(ui.pv!=="table") qp.set("view", ui.pv);
     const qs = qp.toString();
     setHash("#/products" + (qs?"?"+qs:""));
   }
-  $("#prodTblWrap").hidden = ui.pv!=="table";
-  $("#prodGal").hidden = ui.pv!=="cards";
+
+  const pWrap = $("#prodTblWrap"), pGal = $("#prodGal");
+  if(pWrap) pWrap.hidden = ui.pv!=="table";
+  if(pGal) pGal.hidden = ui.pv!=="cards";
   $$("#viewSeg .seg-b").forEach(b=>b.classList.toggle("on", b.dataset.pv===ui.pv));
 
   const emptyHTML = emptyBox(DB.products.filter(p=>!p.isPrivate).length?"אין יינות שתואמים לסינון":"המרתף ריק",
     DB.products.filter(p=>!p.isPrivate).length?"שנה את הסינון או נקה את החיפוש.":"הוסף ייין ראשון כדי להתחיל לנהל מלאי מול תקן.",
     `<button class="btn primary" onclick="productModal()">הוספת ייין</button>`);
 
-  $("#prodTbl").innerHTML = list.length ? `
-    <thead><tr>${cols.map(([k,l,c])=>`<th data-sk="${k}" class="${c}">${l} ${arw(k)}</th>`).join("")}<th class="no-sort"></th></tr></thead>
-    <tbody>${list.map(p=>{
-      const st = status(p);
-      const exp = p.expiry ? daysBetween(today(), p.expiry) : null;
-      const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
-      return `<tr data-nav="${href}">
-        <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="${href}">${esc(p.name)}</a>
-          <div class="t-sku">${esc(wineLine(p) || p.sku || "—")}</div></div></div></td>
-        <td class="c-hide-s">${p.cat?`<span class="tag mute">${esc(p.cat)}</span>`:"—"}</td>
-        <td class="num c-hide-m">${esc(p.vintage||"—")}</td>
-        <td style="min-width:140px">${gauge(p)}</td>
-        <td><span class="tag ${st.tag}">${st.label}</span></td>
-        <td class="num c-hide-m">${p.cost?money(p.cost):"—"}</td>
-        <td class="num">${p.price?money(p.price):"—"}</td>
-        <td class="num c-hide-m">${money(n(p.qty)*n(p.cost))}</td>
-        <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(p.loc||"—")}</td>
-        <td class="num c-hide-s" style="font-size:12px">${p.expiry?`<span class="tag ${exp<0?"crit":exp<=n(DB.settings.expDays)?"warn":"mute"}">${dShort(p.expiry)}</span>`:"—"}</td>
-        <td><div class="t-acts">${acts(p)}<button class="mini neg" data-del="${p.id}" title="מחיקה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyHTML}</td></tr></tbody>`;
+  const pTbl = $("#prodTbl");
+  if(pTbl){
+    pTbl.innerHTML = list.length ? `
+      <thead><tr>${cols.map(([k,l,c])=>`<th data-sk="${k}" class="${c}">${l} ${arw(k)}</th>`).join("")}<th class="no-sort"></th></tr></thead>
+      <tbody>${list.map(p=>{
+        const st = status(p);
+        const exp = p.expiry ? daysBetween(today(), p.expiry) : null;
+        const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
+        return `<tr data-nav="${href}">
+          <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="${href}">${esc(p.name)}</a>
+            <div class="t-sku">${esc(wineLine(p) || p.sku || "—")}</div></div></div></td>
+          <td class="c-hide-s">${p.cat?`<span class="tag mute">${esc(p.cat)}</span>`:"—"}</td>
+          <td class="num c-hide-m">${esc(p.vintage||"—")}</td>
+          <td style="min-width:140px">${gauge(p)}</td>
+          <td><span class="tag ${st.tag}">${st.label}</span></td>
+          <td class="num c-hide-m">${p.cost?money(p.cost):"—"}</td>
+          <td class="num">${p.price?money(p.price):"—"}</td>
+          <td class="num c-hide-m">${money(n(p.qty)*n(p.cost))}</td>
+          <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(p.loc||"—")}</td>
+          <td class="num c-hide-s" style="font-size:12px">${p.expiry?`<span class="tag ${exp<0?"crit":exp<=n(DB.settings.expDays)?"warn":"mute"}">${dShort(p.expiry)}</span>`:"—"}</td>
+          <td><div class="t-acts">${acts(p)}<button class="mini neg" data-del="${p.id}" title="מחיקה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyHTML}</td></tr></tbody>`;
+  }
 
-  $("#prodGal").innerHTML = list.length ? list.map(p=>{
-    const st = status(p);
-    const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
-    return `<article class="gcard" data-nav="${href}">
-      <div class="gph">${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy">`:svgIco("i-bottle")}
-        <span class="tag ${st.tag} gbadge">${st.label}</span></div>
-      <div class="gbody">
-        <div><a class="gname lnk" href="${href}">${esc(p.name)}</a><div class="gmeta">${esc(wineLine(p)||p.sku||"—")}</div></div>
-        ${gauge(p)}
-        <div class="gfoot"><span class="gprice">${p.price?money(p.price):"—"}</span>
-          <span class="gmeta">${esc(p.loc||"")}</span>
-          <span class="t-acts spacer">${acts(p)}</span></div>
-      </div></article>`;}).join("") : emptyHTML;
+  if(pGal){
+    pGal.innerHTML = list.length ? list.map(p=>{
+      const st = status(p);
+      const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
+      return `<article class="gcard" data-nav="${href}">
+        <div class="gph">${p.img?`<img src="${p.img}" alt="${esc(p.name)}" loading="lazy">`:svgIco("i-bottle")}
+          <span class="tag ${st.tag} gbadge">${st.label}</span></div>
+        <div class="gbody">
+          <div><a class="gname lnk" href="${href}">${esc(p.name)}</a><div class="gmeta">${esc(wineLine(p)||p.sku||"—")}</div></div>
+          ${gauge(p)}
+          <div class="gfoot"><span class="gprice">${p.price?money(p.price):"—"}</span>
+            <span class="gmeta">${esc(p.loc||"")}</span>
+            <span class="t-acts spacer">${acts(p)}</span></div>
+        </div></article>`;}).join("") : emptyHTML;
+  }
 }
 
 /* ---------- private fridge ---------- */
@@ -1571,19 +1636,22 @@ function renderPrivateFridge(){
   const emptyHTML = emptyBox("המקרר הפרטי ריק", "הוסף יינות אישיים שלא יחושבו במלאי ובסיכומים של המחסן הכללי.",
     `<button class="btn primary" onclick="productModal(null, true)">הוספת יין למקרר הפרטי</button>`);
 
-  $("#privProdTbl").innerHTML = list.length ? `
-    <thead><tr>${cols.map(([k,l])=>`<th class="no-sort">${l}</th>`).join("")}<th class="no-sort"></th></tr></thead>
-    <tbody>${list.map(p=>{
-      const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
-      return `<tr data-nav="${href}">
-        <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="${href}">${esc(p.name)}</a>
-          <div class="t-sku">${esc(wineLine(p) || "פרטי")}</div></div></div></td>
-        <td class="num">${esc(p.vintage||"—")}</td>
-        <td class="num" style="font-weight:700">${qty(p.qty)} ${esc(p.unit||"")}</td>
-        <td style="color:var(--muted);font-size:12.5px">${esc(p.loc||"מקרר פרטי")}</td>
-        <td style="color:var(--muted);font-size:12.5px">${esc(p.notes||"—")}</td>
-        <td><div class="t-acts">${acts(p)}<button class="mini neg" data-del="${p.id}" title="מחיקה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyHTML}</td></tr></tbody>`;
+  const pTbl = $("#privProdTbl");
+  if(pTbl){
+    pTbl.innerHTML = list.length ? `
+      <thead><tr>${cols.map(([k,l])=>`<th class="no-sort">${l}</th>`).join("")}<th class="no-sort"></th></tr></thead>
+      <tbody>${list.map(p=>{
+        const href = `#/product/${encodeURIComponent(p.sku||p.id)}`;
+        return `<tr data-nav="${href}">
+          <td><div class="t-cell">${thumb(p)}<div style="min-width:0"><a class="t-name lnk" href="${href}">${esc(p.name)}</a>
+            <div class="t-sku">${esc(wineLine(p) || "פרטי")}</div></div></div></td>
+          <td class="num">${esc(p.vintage||"—")}</td>
+          <td class="num" style="font-weight:700">${qty(p.qty)} ${esc(p.unit||"")}</td>
+          <td style="color:var(--muted);font-size:12.5px">${esc(p.loc||"מקרר פרטי")}</td>
+          <td style="color:var(--muted);font-size:12.5px">${esc(p.notes||"—")}</td>
+          <td><div class="t-acts">${acts(p)}<button class="mini neg" data-del="${p.id}" title="מחיקה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyHTML}</td></tr></tbody>`;
+  }
 }
 
 /* ---------- כרטיס יין (עמוד מלא) ---------- */
@@ -1624,86 +1692,91 @@ function renderProduct(p){
     ["לשתייה עד", p.expiry?dShort(p.expiry)+(exp!=null?` · ${exp<0?"עבר":"בעוד "+exp+" ימים"}`:""):""]
   ].filter(([,v])=>v!==""&&v!=null&&v!==undefined);
 
-  $("#prodPage").innerHTML = `
-    <div class="crumb">
-      <a class="lnk" href="${p.isPrivate?'#/privateFridge':'#/products'}">${p.isPrivate?'מקרר פרטי':'יינות'}</a><span>/</span><span style="color:var(--ink)">${esc(p.name)}</span>
-      <span class="spacer"></span>
-      <button class="btn sm" data-link="${esc(p.sku||p.id)}">${svgIco("i-link")}העתקת קישור</button>
-      <button class="btn sm" data-edit="${p.id}">${svgIco("i-edit")}עריכה</button>
-      <button class="btn sm danger" data-del="${p.id}">${svgIco("i-trash")}מחיקה</button>
-    </div>
+  const pgEl = $("#prodPage");
+  if(pgEl){
+    pgEl.innerHTML = `
+      <div class="crumb">
+        <a class="lnk" href="${p.isPrivate?'#/privateFridge':'#/products'}">${p.isPrivate?'מקרר פרטי':'יינות'}</a><span>/</span><span style="color:var(--ink)">${esc(p.name)}</span>
+        <span class="spacer"></span>
+        <button class="btn sm" data-link="${esc(p.sku||p.id)}">${svgIco("i-link")}העתקת קישור</button>
+        <button class="btn sm" data-edit="${p.id}">${svgIco("i-edit")}עריכה</button>
+        <button class="btn sm danger" data-del="${p.id}">${svgIco("i-trash")}מחיקה</button>
+      </div>
 
-    <div class="pp">
-      <div class="card"><div class="card-b">
-        ${p.img?`<img class="pp-img" src="${p.img}" alt="${esc(p.name)}">`:`<div class="pp-ph">${svgIco("i-bottle")}</div>`}
-        <div class="row" style="margin-top:12px"><span class="tag ${st.tag}">${st.label}</span>
-          ${p.isPrivate?`<span class="tag info">מקרר פרטי</span>`:""}
-          ${p.cat?`<a class="tag mute lnk" href="#/products?cat=${encodeURIComponent(p.cat)}">${esc(p.cat)}</a>`:""}</div>
-        <div style="margin-top:14px">${gauge(p)}</div>
-        <div class="act-grid">
-          <button class="btn sm" data-mv="in" data-id="${p.id}">${svgIco("i-plus")}כניסה</button>
-          <button class="btn sm" data-mv="out" data-id="${p.id}">${svgIco("i-minus")}יציאה</button>
-          <button class="btn sm primary" data-mvfull="sale" data-id="${p.id}">מכירה</button>
-          <button class="btn sm" data-mvfull="adjust" data-id="${p.id}">ספירה</button>
-        </div>
-      </div></div>
-
-      <div>
+      <div class="pp">
         <div class="card"><div class="card-b">
-          <div class="pp-title">${esc(p.name)}</div>
-          <div class="pp-sub">${esc(wineLine(p) || "ללא פרטי יקב")}</div>
-          <div class="dl">${det.map(([t,v])=>`<div><div class="dl-t">${esc(t)}</div><div class="dl-v">${esc(v)}</div></div>`).join("")}</div>
-          ${p.notes?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
-            <div class="dl-t">הערות</div><div style="font-size:13.5px;margin-top:5px;line-height:1.6">${esc(p.notes)}</div></div>`:""}
+          ${p.img?`<img class="pp-img" src="${p.img}" alt="${esc(p.name)}">`:`<div class="pp-ph">${svgIco("i-bottle")}</div>`}
+          <div class="row" style="margin-top:12px"><span class="tag ${st.tag}">${st.label}</span>
+            ${p.isPrivate?`<span class="tag info">מקרר פרטי</span>`:""}
+            ${p.cat?`<a class="tag mute lnk" href="#/products?cat=${encodeURIComponent(p.cat)}">${esc(p.cat)}</a>`:""}</div>
+          <div style="margin-top:14px">${gauge(p)}</div>
+          <div class="act-grid">
+            <button class="btn sm" data-mv="in" data-id="${p.id}">${svgIco("i-plus")}כניסה</button>
+            <button class="btn sm" data-mv="out" data-id="${p.id}">${svgIco("i-minus")}יציאה</button>
+            <button class="btn sm primary" data-mvfull="sale" data-id="${p.id}">מכירה</button>
+            <button class="btn sm" data-mvfull="adjust" data-id="${p.id}">ספירה</button>
+          </div>
         </div></div>
 
-        <div class="kpis mt">
-          <div class="kpi ${st.k==="crit"?"k-crit":st.k==="warn"?"k-warn":"k-ok"}"><div class="kpi-l">במלאי</div><div class="kpi-v">${qty(p.qty)}</div><div class="kpi-f">${esc(p.unit||"")} · תקן ${qty(p.std)}</div></div>
-          <div class="kpi ${gap>0?"k-warn":""}"><div class="kpi-l">${gap>0?"חסר להשלמת תקן":"עודף מעל התקן"}</div><div class="kpi-v">${qty(Math.abs(gap))}</div><div class="kpi-f">${gap>0?"להזמין מהיקב":"מלאי חופשי"}</div></div>
-          <div class="kpi"><div class="kpi-l">ערך המלאי</div><div class="kpi-v">${money(n(p.qty)*n(p.cost))}</div><div class="kpi-f">שווי מדף ${money(n(p.qty)*n(p.price))}</div></div>
-          <div class="kpi"><div class="kpi-l">נמכר (90 יום)</div><div class="kpi-v">${qty(sold)}</div><div class="kpi-f">${money(rev)} הכנסות</div></div>
-          <div class="kpi ${profit>=0?"k-ok":"k-crit"}"><div class="kpi-l">רווח (90 יום)</div><div class="kpi-v">${money(profit)}</div><div class="kpi-f">${money(n(p.price)-n(p.cost))} לבקבוק</div></div>
-          <div class="kpi"><div class="kpi-l">נכנס / יצא (90 יום)</div><div class="kpi-v">${qty(inn)} / ${qty(out)}</div><div class="kpi-f">${mine.length} תנועות בסך הכל</div></div>
+        <div>
+          <div class="card"><div class="card-b">
+            <div class="pp-title">${esc(p.name)}</div>
+            <div class="pp-sub">${esc(wineLine(p) || "ללא פרטי יקב")}</div>
+            <div class="dl">${det.map(([t,v])=>`<div><div class="dl-t">${esc(t)}</div><div class="dl-v">${esc(v)}</div></div>`).join("")}</div>
+            ${p.notes?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
+              <div class="dl-t">הערות</div><div style="font-size:13.5px;margin-top:5px;line-height:1.6">${esc(p.notes)}</div></div>`:""}
+          </div></div>
+
+          <div class="kpis mt">
+            <div class="kpi ${st.k==="crit"?"k-crit":st.k==="warn"?"k-warn":"k-ok"}"><div class="kpi-l">במלאי</div><div class="kpi-v">${qty(p.qty)}</div><div class="kpi-f">${esc(p.unit||"")} · תקן ${qty(p.std)}</div></div>
+            <div class="kpi ${gap>0?"k-warn":""}"><div class="kpi-l">${gap>0?"חסר להשלמת תקן":"עודף מעל התקן"}</div><div class="kpi-v">${qty(Math.abs(gap))}</div><div class="kpi-f">${gap>0?"להזמין מהיקב":"מלאי חופשי"}</div></div>
+            <div class="kpi"><div class="kpi-l">ערך המלאי</div><div class="kpi-v">${money(n(p.qty)*n(p.cost))}</div><div class="kpi-f">שווי מדף ${money(n(p.qty)*n(p.price))}</div></div>
+            <div class="kpi"><div class="kpi-l">נמכר (90 יום)</div><div class="kpi-v">${qty(sold)}</div><div class="kpi-f">${money(rev)} הכנסות</div></div>
+            <div class="kpi ${profit>=0?"k-ok":"k-crit"}"><div class="kpi-l">רווח (90 יום)</div><div class="kpi-v">${money(profit)}</div><div class="kpi-f">${money(n(p.price)-n(p.cost))} לבקבוק</div></div>
+            <div class="kpi"><div class="kpi-l">נכנס / יצא (90 יום)</div><div class="kpi-v">${qty(inn)} / ${qty(out)}</div><div class="kpi-f">${mine.length} תנועות בסך הכל</div></div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="grid mt g-2">
-      <div class="card"><div class="card-h"><span class="card-t">תנועה ב־30 הימים האחרונים</span></div>
-        <div class="card-b"><div id="ppChart"></div></div></div>
-      <div class="card"><div class="card-h"><span class="card-t">התראות על היין הזה</span><span class="tag ${alerts.length?"warn":"ok"} spacer">${alerts.length}</span></div>
-        ${alerts.length?alerts.map(a=>alertRow(a,false)).join(""):emptyBox("אין התראות","היין הזה עומד בכל הכללים הפעילים.")}</div>
-    </div>
+      <div class="grid mt g-2">
+        <div class="card"><div class="card-h"><span class="card-t">תנועה ב־30 הימים האחרונים</span></div>
+          <div class="card-b"><div id="ppChart"></div></div></div>
+        <div class="card"><div class="card-h"><span class="card-t">התראות על היין הזה</span><span class="tag ${alerts.length?"warn":"ok"} spacer">${alerts.length}</span></div>
+          ${alerts.length?alerts.map(a=>alertRow(a,false)).join(""):emptyBox("אין התראות","היין הזה עומד בכל הכללים הפעילים.")}</div>
+      </div>
 
-    <div class="card mt"><div class="card-h"><span class="card-t">היסטוריית תנועות</span>
-      <a class="btn sm spacer" href="#/moves">ליומן המלא</a></div>
-      <div class="tbl-wrap">${mine.length?`<table>
-        <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">סוג</th><th class="no-sort">כמות</th>
-          <th class="no-sort c-hide-m">מחיר</th><th class="no-sort c-hide-m">סה״כ</th><th class="no-sort c-hide-s">הערה</th><th class="no-sort"></th></tr></thead>
-        <tbody>${mine.slice(0,60).map(m=>{ const T = MOVE[m.type];
-          const up = m.price!=null&&m.price!==""?n(m.price):(m.type==="sale"?n(p.price):null);
-          return `<tr><td class="num" style="font-size:12px;white-space:nowrap">${dLong(m.date)}</td>
-            <td><span class="tag ${T.tag}">${T.label}</span></td>
-            <td class="num" style="font-weight:600">${m.type==="in"?"+":m.type==="adjust"?"→ ":"−"}${qty(m.qty)}</td>
-            <td class="num c-hide-m">${up!=null?money(up):"—"}</td>
-            <td class="num c-hide-m">${up!=null?money(up*n(m.qty)):"—"}</td>
-            <td class="c-hide-s" style="color:var(--muted);font-size:12.5px">${esc(m.note||"—")}</td>
-            <td><div class="t-acts"><button class="mini neg" data-delmv="${m.id}" title="ביטול התנועה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody></table>`
-        : emptyBox("אין עדיין תנועות ליין הזה","רשום כניסה או מכירה מהכפתורים למעלה.")}</div></div>`;
+      <div class="card mt"><div class="card-h"><span class="card-t">היסטוריית תנועות</span>
+        <a class="btn sm spacer" href="#/moves">ליומן המלא</a></div>
+        <div class="tbl-wrap">${mine.length?`<table>
+          <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">סוג</th><th class="no-sort">כמות</th>
+            <th class="no-sort c-hide-m">מחיר</th><th class="no-sort c-hide-m">סה״כ</th><th class="no-sort c-hide-s">הערה</th><th class="no-sort"></th></tr></thead>
+          <tbody>${mine.slice(0,60).map(m=>{ const T = MOVE[m.type];
+            const up = m.price!=null&&m.price!==""?n(m.price):(m.type==="sale"?n(p.price):null);
+            return `<tr><td class="num" style="font-size:12px;white-space:nowrap">${dLong(m.date)}</td>
+              <td><span class="tag ${T.tag}">${T.label}</span></td>
+              <td class="num" style="font-weight:600">${m.type==="in"?"+":m.type==="adjust"?"→ ":"−"}${qty(m.qty)}</td>
+              <td class="num c-hide-m">${up!=null?money(up):"—"}</td>
+              <td class="num c-hide-m">${up!=null?money(up*n(m.qty)):"—"}</td>
+              <td class="c-hide-s" style="color:var(--muted);font-size:12.5px">${esc(m.note||"—")}</td>
+              <td><div class="t-acts"><button class="mini neg" data-delmv="${m.id}" title="ביטול התנועה">${svgIco("i-trash")}</button></div></td></tr>`;}).join("")}</tbody></table>`
+          : emptyBox("אין עדיין תנועות ליין הזה","רשום כניסה או מכירה מהכפתורים למעלה.")}</div></div>`;
+  }
 
   chartBars($("#ppChart"), {
     labels: days.map(d=>dShort(d).slice(0,5)),
     series: [{name:"נכנס", color:CV("--brand"), values: days.map(d=>dIn[d])},
              {name:"נמכר", color:CV("--warn"), values: days.map(d=>dSold[d])}]
   });
-  $("#pgTitle").textContent = p.name;
-  $("#pgSub").textContent = wineLine(p) || "כרטיס יין";
+  const tEl = $("#pgTitle"), sEl = $("#pgSub");
+  if(tEl) tEl.textContent = p.name;
+  if(sEl) sEl.textContent = wineLine(p) || "כרטיס ייין";
 }
 
 /* ---------- moves ---------- */
 function filteredMoves(){
   const q = ui.q.trim().toLowerCase();
-  const t = $("#fMoveType").value, f = $("#fMoveFrom").value, to = $("#fMoveTo").value;
+  const mtEl = $("#fMoveType"), mfEl = $("#fMoveFrom"), mtToEl = $("#fMoveTo");
+  const t = mtEl ? mtEl.value : "", f = mfEl ? mfEl.value : "", to = mtToEl ? mtToEl.value : "";
   let list = DB.moves.filter(m=>{
     if(t && m.type!==t) return false;
     if(f && iso(m.date) < f) return false;
@@ -1716,51 +1789,62 @@ function filteredMoves(){
   list.sort((a,b)=> k==="date" ? (new Date(a.date)-new Date(b.date))*d : (n(a[k])-n(b[k]))*d);
   return list;
 }
+
 function renderMoves(){
   const list = filteredMoves();
-  $("#movesTbl").innerHTML = list.length ? `
-    <thead><tr><th data-mk="date">תאריך ${ui.sortM.k==="date"?`<span class="arw">${ui.sortM.d>0?"▲":"▼"}</span>`:""}</th>
-      <th class="no-sort">יין</th><th class="no-sort">סוג</th><th data-mk="qty">כמות</th>
-      <th class="no-sort c-hide-m">מחיר ליחידה</th><th class="no-sort c-hide-m">סה״כ</th><th class="no-sort c-hide-s">הערה</th><th class="no-sort"></th></tr></thead>
-    <tbody>${list.slice(0,400).map(m=>{
-      const p = DB.products.find(x=>x.id===m.pid), T = MOVE[m.type];
-      const up = m.price!=null && m.price!=="" ? n(m.price) : (m.type==="sale" && p ? n(p.price) : null);
-      return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}>
-        <td class="num" style="font-size:12px;white-space:nowrap">${dLong(m.date)}</td>
-        <td><div class="t-cell">${p?thumb(p):""}<div style="min-width:0">${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a>`:`<span class="t-name">(יין שנמחק)</span>`}<div class="t-sku">${esc(p?wineLine(p)||(p.isPrivate?"מקרר פרטי":p.sku)||"":"")}</div></div></div></td>
-        <td><span class="tag ${T.tag}">${T.label}</span></td>
-        <td class="num" style="font-weight:600">${m.type==="in"?"+":m.type==="adjust"?"→ ":"−"}${qty(m.qty)}</td>
-        <td class="num c-hide-m">${up!=null?money(up):"—"}</td>
-        <td class="num c-hide-m">${up!=null?money(up*n(m.qty)):"—"}</td>
-        <td class="c-hide-s" style="color:var(--muted);font-size:12.5px;max-width:200px">${esc(m.note||"—")}</td>
-        <td><div class="t-acts"><button class="mini neg" data-delmv="${m.id}" title="ביטול התנועה">${svgIco("i-trash")}</button></div></td>
-      </tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyBox("אין תנועות להצגה", DB.moves.length?"נסה טווח תאריכים או סוג תנועה אחר.":"כל כניסה, יציאה, מכירה או ספירה שתרשום תופיע כאן.",
-      `<button class="btn primary" onclick="moveModal()">רישום תנועה</button>`)}</td></tr></tbody>`;
+  const movesTbl = $("#movesTbl");
+  if(movesTbl){
+    movesTbl.innerHTML = list.length ? `
+      <thead><tr><th data-mk="date">תאריך ${ui.sortM.k==="date"?`<span class="arw">${ui.sortM.d>0?"▲":"▼"}</span>`:""}</th>
+        <th class="no-sort">יין</th><th class="no-sort">סוג</th><th data-mk="qty">כמות</th>
+        <th class="no-sort c-hide-m">מחיר ליחידה</th><th class="no-sort c-hide-m">סה״כ</th><th class="no-sort c-hide-s">הערה</th><th class="no-sort"></th></tr></thead>
+      <tbody>${list.slice(0,400).map(m=>{
+        const p = DB.products.find(x=>x.id===m.pid), T = MOVE[m.type];
+        const up = m.price!=null && m.price!=="" ? n(m.price) : (m.type==="sale" && p ? n(p.price) : null);
+        return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}>
+          <td class="num" style="font-size:12px;white-space:nowrap">${dLong(m.date)}</td>
+          <td><div class="t-cell">${p?thumb(p):""}<div style="min-width:0">${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(p.name)}</a>`:`<span class="t-name">(יין שנמחק)</span>`}<div class="t-sku">${esc(p?wineLine(p)||(p.isPrivate?"מקרר פרטי":p.sku)||"":"")}</div></div></div></td>
+          <td><span class="tag ${T.tag}">${T.label}</span></td>
+          <td class="num" style="font-weight:600">${m.type==="in"?"+":m.type==="adjust"?"→ ":"−"}${qty(m.qty)}</td>
+          <td class="num c-hide-m">${up!=null?money(up):"—"}</td>
+          <td class="num c-hide-m">${up!=null?money(up*n(m.qty)):"—"}</td>
+          <td class="c-hide-s" style="color:var(--muted);font-size:12.5px;max-width:200px">${esc(m.note||"—")}</td>
+          <td><div class="t-acts"><button class="mini neg" data-delmv="${m.id}" title="ביטול התנועה">${svgIco("i-trash")}</button></div></td>
+        </tr>`;}).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyBox("אין תנועות להצגה", DB.moves.length?"נסה טווח תאריכים או סוג תנועה אחר.":"כל כניסה, יציאה, מכירה או ספירה שתרשום תופיע כאן.",
+        `<button class="btn primary" onclick="moveModal()">רישום תנועה</button>`)}</td></tr></tbody>`;
+  }
 }
 
 /* ---------- alerts view ---------- */
 function renderAlerts(){
   const al = evalAlerts();
-  $("#alertCount").textContent = al.length + " פתוחות";
-  $("#alertList").innerHTML = al.length ? al.map(a=>alertRow(a)).join("")
-    : emptyBox("שקט במרתף","אף ייין לא עומד בתנאי של כלל פעיל.");
+  const acEl = $("#alertCount");
+  if(acEl) acEl.textContent = al.length + " פתוחות";
+  const alEl = $("#alertList");
+  if(alEl){
+    alEl.innerHTML = al.length ? al.map(a=>alertRow(a)).join("")
+      : emptyBox("שקט במרתף","אף ייין לא עומד בתנאי של כלל פעיל.");
+  }
   const badge = al.length;
   [["#navAlerts"],["#mobAlerts"]].forEach(([s])=>{ const el=$(s); if(!el) return; el.hidden = !badge; el.textContent = badge>99?"99+":badge; });
 
-  $("#ruleList").innerHTML = DB.rules.length ? DB.rules.map(r=>{
-    const hits = al.filter(a=>a.rule.id===r.id).length;
-    return `<div class="alert-row">
-      <div class="alert-i ${r.sev}">${svgIco(r.sev==="crit"?"i-alert":"i-bell")}</div>
-      <div style="min-width:0"><div class="alert-t">${esc(r.name)}</div>
-        <div class="alert-s">${FIELDS[r.field]?.label||r.field} ${OPS[r.op]?.label||r.op} ${qty(r.val)}${r.scope?` · רק ב־${esc(r.scope)}`:""} · ${hits} התאמות</div></div>
-      <div class="t-acts spacer">
-        <button class="mini" data-ruleon="${r.id}" title="${r.on?"השבתה":"הפעלה"}">${r.on?svgIco("i-bell"):svgIco("i-x")}</button>
-        <button class="mini" data-ruleedit="${r.id}" title="עריכה">${svgIco("i-edit")}</button>
-        <button class="mini neg" data-ruledel="${r.id}" title="מחיקה">${svgIco("i-trash")}</button>
-      </div></div>`;}).join("")
-    : emptyBox("אין כללים מוגדרים","כלל מגדיר מתי המערכת מתריעה — למשל כשכמות בקבוקים יורדת מתחת לתקן.",
-      `<button class="btn primary" onclick="ruleModal()">כלל ראשון</button>`);
+  const rlEl = $("#ruleList");
+  if(rlEl){
+    rlEl.innerHTML = DB.rules.length ? DB.rules.map(r=>{
+      const hits = al.filter(a=>a.rule.id===r.id).length;
+      return `<div class="alert-row">
+        <div class="alert-i ${r.sev}">${svgIco(r.sev==="crit"?"i-alert":"i-bell")}</div>
+        <div style="min-width:0"><div class="alert-t">${esc(r.name)}</div>
+          <div class="alert-s">${FIELDS[r.field]?.label||r.field} ${OPS[r.op]?.label||r.op} ${qty(r.val)}${r.scope?` · רק ב־${esc(r.scope)}`:""} · ${hits} התאמות</div></div>
+        <div class="t-acts spacer">
+          <button class="mini" data-ruleon="${r.id}" title="${r.on?"השבתה":"הפעלה"}">${r.on?svgIco("i-bell"):svgIco("i-x")}</button>
+          <button class="mini" data-ruleedit="${r.id}" title="עריכה">${svgIco("i-edit")}</button>
+          <button class="mini neg" data-ruledel="${r.id}" title="מחיקה">${svgIco("i-trash")}</button>
+        </div></div>`;}).join("")
+      : emptyBox("אין כללים מוגדרים","כלל מגדיר מתי המערכת מתריעה — למשל כשכמות בקבוקים יורדת מתחת לתקן.",
+        `<button class="btn primary" onclick="ruleModal()">כלל ראשון</button>`);
+  }
 }
 </script>
 
@@ -1769,26 +1853,34 @@ function renderAlerts(){
    סיכומים
    ========================================================== */
 function repRange(){
-  let f = $("#rFrom").value, t = $("#rTo").value;
-  if(!f){ f = iso(Date.now()-29*864e5); $("#rFrom").value = f; }
-  if(!t){ t = today(); $("#rTo").value = t; }
-  if(f>t){ [f,t]=[t,f]; $("#rFrom").value=f; $("#rTo").value=t; }
+  const rf = $("#rFrom"), rt = $("#rTo");
+  let f = rf ? rf.value : "", t = rt ? rt.value : "";
+  if(!f){ f = iso(Date.now()-29*864e5); if(rf) rf.value = f; }
+  if(!t){ t = today(); if(rt) rt.value = t; }
+  if(f>t){ [f,t]=[t,f]; if(rf) rf.value=f; if(rt) rt.value=t; }
   return {f,t};
 }
+
 function renderReports(){
   const {f,t} = repRange();
-  const allowPrivate = $("#incPrivate") ? $("#incPrivate").checked : false;
+  const incEl = $("#incPrivate");
+  const allowPrivate = incEl ? incEl.checked : false;
   const st = statsFor(f,t, allowPrivate);
-  $("#repRangeTag").textContent = dShort(f) + " – " + dShort(t) + " · " + (daysBetween(f,t)+1) + " ימים" + (allowPrivate ? " (כולל מקרר פרטי)" : "");
+  const tagEl = $("#repRangeTag");
+  if(tagEl) tagEl.textContent = dShort(f) + " – " + dShort(t) + " · " + (daysBetween(f,t)+1) + " ימים" + (allowPrivate ? " (כולל מקרר פרטי)" : "");
   if(ui.view==="reports") setHash(`#/reports?from=${f}&to=${t}`);
-  $("#repKpis").innerHTML = [
-    ["הכנסות", money(st.revenue), `${qty(st.unitsSold)} יחידות`, ""],
-    ["עלות המכר", money(st.cogs), "לפי מחיר עלות", ""],
-    ["רווח גולמי", money(st.profit), st.revenue>0?Math.round(st.profit/st.revenue*100)+"% שיעור":"—", st.profit>=0?"k-ok":"k-crit"],
-    ["נכנס למחסן", qty(st.unitsIn), "יחידות שהתקבלו", ""],
-    ["יצא מהמחסן", qty(st.unitsOut), "מכירות ומשיכות", "k-warn"],
-    ["ערך מלאי נוכחי", money(st.stockValue), `שווי מדף ${money(st.retailValue)}`, ""]
-  ].map(([l,v,fo,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${fo}</div></div>`).join("");
+  
+  const rKpis = $("#repKpis");
+  if(rKpis){
+    rKpis.innerHTML = [
+      ["הכנסות", money(st.revenue), `${qty(st.unitsSold)} יחידות`, ""],
+      ["עלות המכר", money(st.cogs), "לפי מחיר עלות", ""],
+      ["רווח גולמי", money(st.profit), st.revenue>0?Math.round(st.profit/st.revenue*100)+"% שיעור":"—", st.profit>=0?"k-ok":"k-crit"],
+      ["נכנס למחסן", qty(st.unitsIn), "יחידות שהתקבלו", ""],
+      ["יצא מהמחסן", qty(st.unitsOut), "מכירות ומשיכות", "k-warn"],
+      ["ערך מלאי נוכחי", money(st.stockValue), `שווי מדף ${money(st.retailValue)}`, ""]
+    ].map(([l,v,fo,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${fo}</div></div>`).join("");
+  }
 
   const ser = dailySeries(f,t, allowPrivate);
   chartBars($("#repChart1"), {
@@ -1812,19 +1904,22 @@ function renderReports(){
     rows: [...stockByType].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([label,v])=>({label,v})),
     fmt: money, color: CV("--warn") });
 
-  $("#repTbl").innerHTML = st.rows.length ? `
-    <thead><tr><th class="no-sort">יין</th><th class="no-sort c-hide-s">מק״ט</th><th class="no-sort c-hide-m">נכנס</th><th class="no-sort c-hide-m">יצא</th>
-    <th class="no-sort">נמכר</th><th class="no-sort">הכנסה</th><th class="no-sort c-hide-m">עלות</th><th class="no-sort">רווח</th>
-    <th class="no-sort">מלאי כעת</th><th class="no-sort">סטטוס</th></tr></thead>
-    <tbody>${st.rows.map(r=>{
-      const p = r.p, s = p?status(p):null;
-      return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}><td><div class="t-cell">${p?thumb(p):""}<div style="min-width:0">${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(r.name)}</a>`:`<span class="t-name">${esc(r.name)}</span>`}<div class="t-sku">${p?esc(wineLine(p)):""}</div></div></div></td><td class="t-sku c-hide-s">${esc(r.sku||"—")}</td>
-        <td class="num c-hide-m">${qty(r.in)}</td><td class="num c-hide-m">${qty(r.out)}</td><td class="num">${qty(r.sold)}</td>
-        <td class="num">${money(r.rev)}</td><td class="num c-hide-m">${money(r.cost)}</td>
-        <td class="num" style="color:${r.rev-r.cost>=0?"var(--ok)":"var(--crit)"};font-weight:600">${money(r.rev-r.cost)}</td>
-        <td class="num">${p?qty(p.qty):"—"}</td>
-        <td>${s?`<span class="tag ${s.tag}">${s.label}</span>`:"—"}</td></tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyBox("אין תנועות בטווח הזה","בחר טווח תאריכים אחר או רשום תנועות חדשות.")}</td></tr></tbody>`;
+  const repTbl = $("#repTbl");
+  if(repTbl){
+    repTbl.innerHTML = st.rows.length ? `
+      <thead><tr><th class="no-sort">יין</th><th class="no-sort c-hide-s">מק״ט</th><th class="no-sort c-hide-m">נכנס</th><th class="no-sort c-hide-m">יצא</th>
+      <th class="no-sort">נמכר</th><th class="no-sort">הכנסה</th><th class="no-sort c-hide-m">עלות</th><th class="no-sort">רווח</th>
+      <th class="no-sort">מלאי כעת</th><th class="no-sort">סטטוס</th></tr></thead>
+      <tbody>${st.rows.map(r=>{
+        const p = r.p, s = p?status(p):null;
+        return `<tr ${p?`data-nav="#/product/${encodeURIComponent(p.sku||p.id)}"`:""}><td><div class="t-cell">${p?thumb(p):""}<div style="min-width:0">${p?`<a class="t-name lnk" href="#/product/${encodeURIComponent(p.sku||p.id)}">${esc(r.name)}</a>`:`<span class="t-name">${esc(r.name)}</span>`}<div class="t-sku">${p?esc(wineLine(p)):""}</div></div></div></td><td class="t-sku c-hide-s">${esc(r.sku||"—")}</td>
+          <td class="num c-hide-m">${qty(r.in)}</td><td class="num c-hide-m">${qty(r.out)}</td><td class="num">${qty(r.sold)}</td>
+          <td class="num">${money(r.rev)}</td><td class="num c-hide-m">${money(r.cost)}</td>
+          <td class="num" style="color:${r.rev-r.cost>=0?"var(--ok)":"var(--crit)"};font-weight:600">${money(r.rev-r.cost)}</td>
+          <td class="num">${p?qty(p.qty):"—"}</td>
+          <td>${s?`<span class="tag ${s.tag}">${s.label}</span>`:"—"}</td></tr>`;}).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyBox("אין תנועות בטווח הזה","בחר טווח תאריכים אחר או רשום תנועות חדשות.")}</td></tr></tbody>`;
+  }
 }
 
 /* ==========================================================
@@ -1868,35 +1963,39 @@ const MOVE_HEAD = ["תאריך ושעה","מק״ט","יין","יקב","בציר"
 
 function printPDF(){
   const {f,t} = repRange();
-  const allowPrivate = $("#incPrivate") ? $("#incPrivate").checked : false;
+  const incEl = $("#incPrivate");
+  const allowPrivate = incEl ? incEl.checked : false;
   const st = statsFor(f,t, allowPrivate);
   const al = evalAlerts();
   const kpi = (l,v)=>`<div class="p-kpi"><span>${l}</span><b>${v}</b></div>`;
   const activeProducts = DB.products.filter(p=>allowPrivate || !p.isPrivate);
-  $("#printArea").innerHTML = `
-    <div class="p-head">
-      <div><div class="p-title">${esc(DB.settings.org)}</div><div style="font-size:12px;color:#555">סיכום מלאי יינות ומכירות ${allowPrivate?'(כולל מקרר פרטי)':''}</div></div>
-      <div class="p-meta">טווח הדוח: ${dShort(f)} – ${dShort(t)}<br>הופק: ${dLong(Date.now())}</div>
-    </div>
-    <div class="p-kpis">
-      ${kpi("הכנסות", money(st.revenue))}${kpi("רווח גולמי", money(st.profit))}
-      ${kpi("ערך מלאי", money(st.stockValue))}${kpi("סוגי יין", activeProducts.length)}
-      ${kpi("יחידות שנמכרו", qty(st.unitsSold))}${kpi("נכנס למחסן", qty(st.unitsIn))}
-      ${kpi("מתחת לתקן", activeProducts.filter(p=>status(p).k==="warn").length)}${kpi("אזלו", activeProducts.filter(p=>status(p).k==="crit").length)}
-    </div>
-    ${st.rows.length?`<div class="p-sec"><h3>פירוט לפי מוצר · ${dShort(f)} – ${dShort(t)}</h3>
-      <table><thead><tr><th>יין</th><th>מק״ט</th><th>נכנס</th><th>יצא</th><th>נמכר</th><th>הכנסה</th><th>רווח</th><th>מלאי כעת</th></tr></thead>
-      <tbody>${st.rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.sku||"—")}</td><td>${qty(r.in)}</td><td>${qty(r.out)}</td>
-        <td>${qty(r.sold)}</td><td>${money(r.rev)}</td><td>${money(r.rev-r.cost)}</td><td>${r.p?qty(r.p.qty):"—"}</td></tr>`).join("")}</tbody></table></div>`:""}
-    <div class="p-sec"><h3>מצב מלאי מלא — יינות</h3>
-      <table><thead><tr><th>מק״ט</th><th>יין</th><th>יקב</th><th>בציר</th><th>סוג</th><th>כמות</th><th>תקן</th><th>פער</th><th>ערך</th><th>מיקום</th><th>סטטוס</th></tr></thead>
-      <tbody>${activeProducts.map(p=>`<tr><td>${esc(p.sku||"—")}</td><td>${esc(p.name)}</td><td>${esc(p.winery||"—")}</td><td>${esc(p.vintage||"—")}</td><td>${esc(p.cat||"—")}</td>
-        <td>${qty(p.qty)}</td><td>${qty(p.std)}</td><td>${qty(n(p.qty)-n(p.std))}</td><td>${money(n(p.qty)*n(p.cost))}</td>
-        <td>${esc(p.loc||"—")}</td><td>${status(p).label}</td></tr>`).join("")}</tbody></table></div>
-    ${al.length?`<div class="p-sec"><h3>התראות פתוחות (${al.length})</h3>
-      <table><thead><tr><th>חומרה</th><th>מוצר</th><th>פירוט</th></tr></thead>
-      <tbody>${al.map(a=>`<tr><td>${a.rule.sev==="crit"?"קריטי":a.rule.sev==="warn"?"אזהרה":"מידע"}</td><td>${esc(a.p.name)}</td><td>${esc(a.text)}</td></tr>`).join("")}</tbody></table></div>`:""}
-    <div class="p-foot">הופק ממערכת ניהול המלאי · ${esc(DB.settings.org)} · ${dLong(Date.now())}</div>`;
+  const prArea = $("#printArea");
+  if(prArea){
+    prArea.innerHTML = `
+      <div class="p-head">
+        <div><div class="p-title">${esc(DB.settings.org)}</div><div style="font-size:12px;color:#555">סיכום מלאי יינות ומכירות ${allowPrivate?'(כולל מקרר פרטי)':''}</div></div>
+        <div class="p-meta">טווח הדוח: ${dShort(f)} – ${dShort(t)}<br>הופק: ${dLong(Date.now())}</div>
+      </div>
+      <div class="p-kpis">
+        ${kpi("הכנסות", money(st.revenue))}${kpi("רווח גולמי", money(st.profit))}
+        ${kpi("ערך מלאי", money(st.stockValue))}${kpi("סוגי יין", activeProducts.length)}
+        ${kpi("יחידות שנמכרו", qty(st.unitsSold))}${kpi("נכנס למחסן", qty(st.unitsIn))}
+        ${kpi("מתחת לתקן", activeProducts.filter(p=>status(p).k==="warn").length)}${kpi("אזלו", activeProducts.filter(p=>status(p).k==="crit").length)}
+      </div>
+      ${st.rows.length?`<div class="p-sec"><h3>פירוט לפי מוצר · ${dShort(f)} – ${dShort(t)}</h3>
+        <table><thead><tr><th>יין</th><th>מק״ט</th><th>נכנס</th><th>יצא</th><th>נמכר</th><th>הכנסה</th><th>רווח</th><th>מלאי כעת</th></tr></thead>
+        <tbody>${st.rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.sku||"—")}</td><td>${qty(r.in)}</td><td>${qty(r.out)}</td>
+          <td>${qty(r.sold)}</td><td>${money(r.rev)}</td><td>${money(r.rev-r.cost)}</td><td>${r.p?qty(r.p.qty):"—"}</td></tr>`).join("")}</tbody></table></div>`:""}
+      <div class="p-sec"><h3>מצב מלאי מלא — יינות</h3>
+        <table><thead><tr><th>מק״ט</th><th>יין</th><th>יקב</th><th>בציר</th><th>סוג</th><th>כמות</th><th>תקן</th><th>פער</th><th>ערך</th><th>מיקום</th><th>סטטוס</th></tr></thead>
+        <tbody>${activeProducts.map(p=>`<tr><td>${esc(p.sku||"—")}</td><td>${esc(p.name)}</td><td>${esc(p.winery||"—")}</td><td>${esc(p.vintage||"—")}</td><td>${esc(p.cat||"—")}</td>
+          <td>${qty(p.qty)}</td><td>${qty(p.std)}</td><td>${qty(n(p.qty)-n(p.std))}</td><td>${money(n(p.qty)*n(p.cost))}</td>
+          <td>${esc(p.loc||"—")}</td><td>${status(p).label}</td></tr>`).join("")}</tbody></table></div>
+      ${al.length?`<div class="p-sec"><h3>התראות פתוחות (${al.length})</h3>
+        <table><thead><tr><th>חומרה</th><th>מוצר</th><th>פירוט</th></tr></thead>
+        <tbody>${al.map(a=>`<tr><td>${a.rule.sev==="crit"?"קריטי":a.rule.sev==="warn"?"אזהרה":"מידע"}</td><td>${esc(a.p.name)}</td><td>${esc(a.text)}</td></tr>`).join("")}</tbody></table></div>`:""}
+      <div class="p-foot">הופק ממערכת ניהול המלאי · ${esc(DB.settings.org)} · ${dLong(Date.now())}</div>`;
+  }
   setTimeout(()=>window.print(), 60);
 }
 
@@ -1914,30 +2013,37 @@ function logIt(kind, level, text, detail){
   save();
   if(ui.view === "log") renderLog();
 }
+
 function logRows(){
   return filteredLog().map(e=>[dLong(e.ts), LOG_KIND[e.kind]||e.kind, (LOG_LVL[e.level]||{}).t||e.level, e.text, e.detail]);
 }
 const LOG_HEAD = ["תאריך ושעה","סוג","רמה","פעולה","פרטים"];
+
 function filteredLog(){
-  const k = $("#fLogKind").value, l = $("#fLogLevel").value, q = ui.q.trim().toLowerCase();
+  const kEl = $("#fLogKind"), lEl = $("#fLogLevel");
+  const k = kEl ? kEl.value : "", l = lEl ? lEl.value : "", q = ui.q.trim().toLowerCase();
   return (DB.log||[]).filter(e =>
     (!k || e.kind===k) && (!l || e.level===l) &&
     (!q || `${e.text} ${e.detail}`.toLowerCase().includes(q)));
 }
+
 function renderLog(){
   const list = filteredLog();
-  $("#logTbl").innerHTML = list.length ? `
-    <thead><tr><th class="no-sort">מתי</th><th class="no-sort c-hide-s">סוג</th><th class="no-sort">פעולה</th>
-      <th class="no-sort c-hide-m">פרטים</th><th class="no-sort">תוצאה</th></tr></thead>
-    <tbody>${list.slice(0,300).map(e=>{
-      const lv = LOG_LVL[e.level] || LOG_LVL.info;
-      return `<tr>
-        <td class="num" style="font-size:12px;white-space:nowrap">${dLong(e.ts)}</td>
-        <td class="c-hide-s"><span class="tag mute">${esc(LOG_KIND[e.kind]||e.kind)}</span></td>
-        <td class="t-name">${esc(e.text)}</td>
-        <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(e.detail||"—")}</td>
-        <td><span class="tag ${lv.c}">${lv.t}</span></td></tr>`;}).join("")}</tbody>`
-    : `<tbody><tr><td>${emptyBox("היומן ריק","כל פעולה במערכת — הוספת ייין, תנועה, סנכרון או שחזור — תירשם כאן אוטומטית.")}</td></tr></tbody>`;
+  const logTbl = $("#logTbl");
+  if(logTbl){
+    logTbl.innerHTML = list.length ? `
+      <thead><tr><th class="no-sort">מתי</th><th class="no-sort c-hide-s">סוג</th><th class="no-sort">פעולה</th>
+        <th class="no-sort c-hide-m">פרטים</th><th class="no-sort">תוצאה</th></tr></thead>
+      <tbody>${list.slice(0,300).map(e=>{
+        const lv = LOG_LVL[e.level] || LOG_LVL.info;
+        return `<tr>
+          <td class="num" style="font-size:12px;white-space:nowrap">${dLong(e.ts)}</td>
+          <td class="c-hide-s"><span class="tag mute">${esc(LOG_KIND[e.kind]||e.kind)}</span></td>
+          <td class="t-name">${esc(e.text)}</td>
+          <td class="c-hide-m" style="color:var(--muted);font-size:12.5px">${esc(e.detail||"—")}</td>
+          <td><span class="tag ${lv.c}">${lv.t}</span></td></tr>`;}).join("")}</tbody>`
+      : `<tbody><tr><td>${emptyBox("היומן ריק","כל פעולה במערכת — הוספת ייין, תנועה, סנכרון או שחזור — תירשם כאן אוטומטית.")}</td></tr></tbody>`;
+  }
 }
 
 /* ---------- GitHub ---------- */
@@ -1952,10 +2058,12 @@ function b64enc(str){
   for(let i=0;i<bytes.length;i+=CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+CH));
   return btoa(bin);
 }
+
 function ghUrl(){
   const c = gh();
   return `https://api.github.com/repos/${c.repo.trim().replace(/^\/+|\/+$/g,"")}/contents/${c.path.trim().replace(/^\/+/,"")}`;
 }
+
 async function ghFetch(url, opts={}){
   const headers = {
     "Authorization": `Bearer ${gh().token.trim()}`,
@@ -1966,6 +2074,7 @@ async function ghFetch(url, opts={}){
   return fetch(url, { method: opts.method || "GET", headers,
     body: opts.body ? JSON.stringify(opts.body) : undefined, keepalive: !!opts.keepalive });
 }
+
 async function ghErr(r){
   let msg = "";
   try{ const j = await r.json(); msg = j.message || ""; }catch(e){}
@@ -1975,6 +2084,7 @@ async function ghErr(r){
   if(r.status===409 || r.status===422) return "התנגשות גרסאות בענן — נסה שוב";
   return `${r.status} ${msg}`.trim();
 }
+
 async function ghSha(){
   const r = await ghFetch(ghUrl() + `?ref=${encodeURIComponent(gh().branch||"main")}`, { accept:"application/vnd.github.object+json" });
   if(r.status === 404) return null;
@@ -2006,7 +2116,7 @@ async function ghPush(reason="ידני", silent=false){
     gh().lastSha = (j.content && j.content.sha) || "";
     gh().lastSync = Date.now();
     save();
-    saveSync(); // שמירה קבועה גם של הסטטוס
+    saveSync();
     if(!silent) toast("הגיבוי הועלה לגיטהאב","ok");
     return true;
   }catch(e){
@@ -2082,8 +2192,9 @@ function conflictModal(p, info){
     <div class="modal-f"><button class="btn" data-close>אחליט אחר כך</button>
       <button class="btn" id="cfLocal">להשאיר מקומי ולהעלות</button>
       <button class="btn primary" id="cfRemote">לטעון מהענן</button></div>`);
-  $("#cfRemote").onclick = ()=>{ applyRemote(p); logIt("sync","ok","נבחרה הגרסה מהענן", info); closeModal(); toast("נטענה הגרסה מהענן","ok"); };
-  $("#cfLocal").onclick  = ()=>{ closeModal(); ghPush("החלטת התנגשות"); };
+  const rBtn = $("#cfRemote"), lBtn = $("#cfLocal");
+  if(rBtn) rBtn.onclick = ()=>{ applyRemote(p); logIt("sync","ok","נבחרה הגרסה מהענן", info); closeModal(); toast("נטענה הגרסה מהענן","ok"); };
+  if(lBtn) lBtn.onclick  = ()=>{ closeModal(); ghPush("החלטת התנגשות"); };
 }
 
 async function ghTest(){
@@ -2109,8 +2220,10 @@ function syncUI(state){
   const txt = state ? state : !on ? "ענן לא מוגדר"
     : c.lastSync ? (ghDirty() ? "יש שינויים שלא הועלו" : "מסונכרן")
     : "מוגדר — עוד לא סונכרן";
-  $("#syncTxt").textContent = txt;
-  $("#syncDot").classList.toggle("off", !on || (on && ghDirty()));
+  const stTxt = $("#syncTxt");
+  if(stTxt) stTxt.textContent = txt;
+  const sDot = $("#syncDot");
+  if(sDot) sDot.classList.toggle("off", !on || (on && ghDirty()));
   const st = $("#syncState");
   if(st){
     st.textContent = txt;
@@ -2120,49 +2233,67 @@ function syncUI(state){
   if(last) last.textContent = c.lastSync
     ? `${dLong(c.lastSync)} · ${c.repo}/${c.path}` + (ghDirty() ? " · מאז בוצעו שינויים מקומיים" : "")
     : "עוד לא בוצע סנכרון מהמכשיר הזה.";
-  $("#ghAuto") && $("#ghAuto").classList.toggle("on", !!c.auto);
+  const autoEl = $("#ghAuto");
+  if(autoEl) autoEl.classList.toggle("on", !!c.auto);
 }
 
 function renderSync(){
   const c = gh();
-  if($("#ghRepo")) $("#ghRepo").value = c.repo || "";
-  if($("#ghPath")) $("#ghPath").value = c.path || "data/backup.json";
-  if($("#ghBranch")) $("#ghBranch").value = c.branch || "main";
-  if($("#ghToken")) $("#ghToken").value = c.token || "";
+  const repoEl = $("#ghRepo"), pathEl = $("#ghPath"), branchEl = $("#ghBranch"), tokenEl = $("#ghToken");
+  
+  if(repoEl) repoEl.value = c.repo || "";
+  if(pathEl) pathEl.value = c.path || "data/backup.json";
+  if(branchEl) branchEl.value = c.branch || "main";
+  if(tokenEl) tokenEl.value = c.token || "";
   syncUI();
 }
 
 function saveSync(){
   const c = gh();
-  if($("#ghRepo")) c.repo = $("#ghRepo").value.trim();
-  if($("#ghPath")) c.path = $("#ghPath").value.trim() || "data/backup.json";
-  if($("#ghBranch")) c.branch = $("#ghBranch").value.trim() || "main";
-  if($("#ghToken")) c.token = $("#ghToken").value.trim();
+  const repoEl = $("#ghRepo"), pathEl = $("#ghPath"), branchEl = $("#ghBranch"), tokenEl = $("#ghToken");
+
+  if(repoEl) c.repo = repoEl.value.trim();
+  if(pathEl) c.path = pathEl.value.trim() || "data/backup.json";
+  if(branchEl) c.branch = branchEl.value.trim() || "main";
+  if(tokenEl) c.token = tokenEl.value.trim();
   
-  // שמירה בלעדית ועמידה בדפדפן שלא תמחק
   try{
     localStorage.setItem(GH_KEY, JSON.stringify(c));
   }catch(e){}
-  save(); syncUI();
+  
+  save(); 
+  syncUI();
 }
 
 /* ---------- wiring ---------- */
-["#ghRepo","#ghPath","#ghBranch","#ghToken"].forEach(sel=>{
-  const el = $(sel);
-  if(el){
-    // שמירה בזמן אמת עם כל קלט/שינוי בשדה
-    el.addEventListener("input", saveSync);
-    el.addEventListener("change", saveSync);
+document.addEventListener("input", e => {
+  if (["ghRepo", "ghPath", "ghBranch", "ghToken"].includes(e.target.id)) {
+    saveSync();
   }
 });
 
-if($("#ghAuto")) $("#ghAuto").onclick = ()=>{ gh().auto = !gh().auto; saveSync();
+document.addEventListener("change", e => {
+  if (["ghRepo", "ghPath", "ghBranch", "ghToken"].includes(e.target.id)) {
+    saveSync();
+  }
+});
+
+const ghAutoBtn = $("#ghAuto");
+if(ghAutoBtn) ghAutoBtn.onclick = ()=>{ gh().auto = !gh().auto; saveSync();
   logIt("data","ok", gh().auto ? "סנכרון אוטומטי הופעל" : "סנכרון אוטומטי כובה", ""); };
-if($("#ghPushBtn")) $("#ghPushBtn").onclick = ()=>ghPush("ידני");
-if($("#ghPullBtn")) $("#ghPullBtn").onclick = ()=>confirmModal("הורדה מהענן",
+
+const ghPushBtn = $("#ghPushBtn");
+if(ghPushBtn) ghPushBtn.onclick = ()=>ghPush("ידני");
+
+const ghPullBtn = $("#ghPullBtn");
+if(ghPullBtn) ghPullBtn.onclick = ()=>confirmModal("הורדה מהענן",
   "הנתונים שבמכשיר יוחלפו בגרסה שבענן. אם יש כאן שינויים שלא הועלו — הם יאבדו.","הורדה", ()=>ghPull({}));
-if($("#ghTestBtn")) $("#ghTestBtn").onclick = ghTest;
-if($("#ghForget")) $("#ghForget").onclick = ()=>confirmModal("ניתוק מהענן",
+
+const ghTestBtn = $("#ghTestBtn");
+if(ghTestBtn) ghTestBtn.onclick = ghTest;
+
+const ghForgetBtn = $("#ghForget");
+if(ghForgetBtn) ghForgetBtn.onclick = ()=>confirmModal("ניתוק מהענן",
   "הטוקן והפרטים יימחקו מהמכשיר הזה. הגיבויים שכבר עלו לגיטהאב יישארו שם.","ניתוק", ()=>{
     gh().token = ""; gh().repo = ""; gh().lastSha = ""; 
     try{ localStorage.removeItem(GH_KEY); }catch(e){}
@@ -2170,25 +2301,34 @@ if($("#ghForget")) $("#ghForget").onclick = ()=>confirmModal("ניתוק מהע�
     logIt("sync","warn","נותק החיבור לגיטהאב","הטוקן נמחק מהמכשיר"); toast("נותק מהענן","warn"); });
 
 /* כפתורי סנכרון מהירים בראש העמוד */
-$("#btnQuickPush").onclick = ()=>ghPush("גיבוי מהיר");
-$("#btnQuickPull").onclick = ()=>ghPull({check:true});
+const qPush = $("#btnQuickPush"), qPull = $("#btnQuickPull");
+if(qPush) qPush.onclick = ()=>ghPush("גיבוי מהיר");
+if(qPull) qPull.onclick = ()=>ghPull({check:true});
 
 /* מצב עריכה גלובלי באתר */
-$("#globalEditBtn").onclick = ()=>{
-  ui.globalEdit = !ui.globalEdit;
-  document.body.classList.toggle("global-edit-mode", ui.globalEdit);
-  $("#globalEditBtn").classList.toggle("active", ui.globalEdit);
-  document.body.contentEditable = ui.globalEdit ? "true" : "false";
-  toast(ui.globalEdit ? "מצב עריכה גלובלי הופעל — לחץ על טקסטים לעריכה" : "מצב עריכה גלובלי הושבת", ui.globalEdit ? "warn" : "ok");
-};
+const gEditBtn = $("#globalEditBtn");
+if(gEditBtn){
+  gEditBtn.onclick = ()=>{
+    ui.globalEdit = !ui.globalEdit;
+    document.body.classList.toggle("global-edit-mode", ui.globalEdit);
+    gEditBtn.classList.toggle("active", ui.globalEdit);
+    document.body.contentEditable = ui.globalEdit ? "true" : "false";
+    toast(ui.globalEdit ? "מצב עריכה גלובלי הופעל — לחץ על טקסטים לעריכה" : "מצב עריכה גלובלי הושבת", ui.globalEdit ? "warn" : "ok");
+  };
+}
 
 ["#fLogKind","#fLogLevel"].forEach(sel=>{ if($(sel)) $(sel).addEventListener("change", renderLog); });
-if($("#logXls")) $("#logXls").onclick = ()=>toXLS("יומן פעילות", LOG_HEAD, logRows(), "yeynot-log-"+today());
-if($("#logCsv")) $("#logCsv").onclick = ()=>toCSV(LOG_HEAD, logRows(), "yeynot-log-"+today());
-if($("#logClear")) $("#logClear").onclick = ()=>confirmModal("ניקוי היומן","כל רשומות היומן יימחקו. הנתונים עצמם לא ייפגעו.","ניקוי",()=>{
+const logXls = $("#logXls"), logCsv = $("#logCsv"), logClear = $("#logClear");
+if(logXls) logXls.onclick = ()=>toXLS("יומן פעילות", LOG_HEAD, logRows(), "yeynot-log-"+today());
+if(logCsv) logCsv.onclick = ()=>toCSV(LOG_HEAD, logRows(), "yeynot-log-"+today());
+if(logClear) logClear.onclick = ()=>confirmModal("ניקוי היומן","כל רשומות היומן יימחקו. הנתונים עצמם לא ייפגעו.","ניקוי",()=>{
   DB.log = []; save(); renderLog(); logIt("system","warn","היומן נוקה",""); toast("היומן נוקה","warn"); });
-if($("#syncChip")) $("#syncChip").onclick = ()=>go("settings");
-if($("#globalSearch")) $("#globalSearch").addEventListener("input", ()=>{ if(ui.view==="log") renderLog(); });
+
+const syncChip = $("#syncChip");
+if(syncChip) syncChip.onclick = ()=>go("settings");
+
+const gSearch = $("#globalSearch");
+if(gSearch) gSearch.addEventListener("input", ()=>{ if(ui.view==="log") renderLog(); });
 
 /* ---------- אוטומטי: פתיחה וסגירה ---------- */
 let lastAuto = 0;
@@ -2211,18 +2351,25 @@ if(gh().auto && ghReady()) setTimeout(()=>ghPull({check:true, silent:true}), 800
    חלונות עריכה
    ========================================================== */
 function openModal(html, wide=false){
-  $("#modal").className = "modal" + (wide?" wide":"");
-  $("#modal").innerHTML = html;
-  $("#veil").classList.add("on");
+  const m = $("#modal"), v = $("#veil");
+  if(!m || !v) return;
+  m.className = "modal" + (wide?" wide":"");
+  m.innerHTML = html;
+  v.classList.add("on");
   setTimeout(()=>{ const i = $("#modal input:not([type=hidden]), #modal select"); if(i && innerWidth>700) i.focus(); },60);
 }
-function closeModal(){ $("#veil").classList.remove("on"); $("#modal").innerHTML=""; }
+function closeModal(){ 
+  const m = $("#modal"), v = $("#veil");
+  if(v) v.classList.remove("on"); 
+  if(m) m.innerHTML=""; 
+}
 
 function findProduct(key){
   if(!key) return null;
   const k = decodeURIComponent(String(key)).toLowerCase();
   return DB.products.find(x=>x.id===key) || DB.products.find(x=>(x.sku||"").toLowerCase()===k) || null;
 }
+
 function productModal(id, forcePrivate=false){
   const found = findProduct(id);
   if(id && !found){ toast("היין המבוקש לא נמצא במחסן הזה","warn"); go("products"); return; }
@@ -2285,35 +2432,58 @@ function productModal(id, forcePrivate=false){
 
   const setImg = v => {
     img = v || "";
-    $("#pPrevWrap").innerHTML = img ? `<img class="drop-prev" src="${img}" alt="">` : `<div class="drop-ph">${svgIco("i-image")}</div>`;
-    $("#pImgDel").hidden = !img;
+    const wrap = $("#pPrevWrap"), delB = $("#pImgDel");
+    if(wrap) wrap.innerHTML = img ? `<img class="drop-prev" src="${img}" alt="">` : `<div class="drop-ph">${svgIco("i-image")}</div>`;
+    if(delB) delB.hidden = !img;
   };
-  $("#pPick").onclick = ()=>$("#pFile").click();
-  $("#pFile").onchange = e => { readImage(e.target.files[0], v=>{ setImg(v); toast("התמונה נוספה","ok"); }); e.target.value=""; };
-  $("#pImgDel").onclick = ()=>{ setImg(""); toast("התמונה הוסרה","warn"); };
+  
+  const pPick = $("#pPick"), pFile = $("#pFile"), pImgDel = $("#pImgDel");
+  if(pPick && pFile) pPick.onclick = ()=>pFile.click();
+  if(pFile) pFile.onchange = e => { readImage(e.target.files[0], v=>{ setImg(v); toast("התמונה נוספה","ok"); }); e.target.value=""; };
+  if(pImgDel) pImgDel.onclick = ()=>{ setImg(""); toast("התמונה הוסרה","warn"); };
+  
   const dz = $("#pDrop");
-  ["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add("over"); }));
-  ["dragleave","drop"].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove("over"); }));
-  dz.addEventListener("drop", e=>{ const f = e.dataTransfer.files[0]; if(f) readImage(f, v=>{ setImg(v); toast("התמונה נוספה","ok"); }); });
-  dz.addEventListener("paste", e=>{ const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/")); if(it) readImage(it.getAsFile(), setImg); });
+  if(dz){
+    ["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add("over"); }));
+    ["dragleave","drop"].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove("over"); }));
+    dz.addEventListener("drop", e=>{ const f = e.dataTransfer.files[0]; if(f) readImage(f, v=>{ setImg(v); toast("התמונה נוספה","ok"); }); });
+    dz.addEventListener("paste", e=>{ const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/")); if(it) readImage(it.getAsFile(), setImg); });
+  }
 
-  $("#pSave").onclick = ()=>{
-    const name = $("#pName").value.trim();
-    if(!name){ toast("צריך שם מוצר כדי לשמור","err"); $("#pName").focus(); return; }
-    const isPriv = $("#pIsPrivate").value === "true";
-    const rec = { id: id||uid(), name, sku:$("#pSku").value.trim(), cat:$("#pCat").value.trim(),
-      img, winery:$("#pWin").value.trim(), vintage:$("#pVin").value.trim(), varietal:$("#pVar").value.trim(),
-      region:$("#pReg").value.trim(), vol:$("#pVol").value===""?"":n($("#pVol").value),
-      unit:$("#pUnit").value.trim()||"בקבוק", qty:n($("#pQty").value), std:n($("#pStd").value),
-      max:$("#pMax").value===""?"":n($("#pMax").value), cost:$("#pCost").value===""?"":n($("#pCost").value),
-      price:$("#pPrice").value===""?"":n($("#pPrice").value), supplier:$("#pSup").value.trim(),
-      loc:$("#pLoc").value.trim(), expiry:$("#pExp").value, notes:$("#pNotes").value.trim(),
-      isPrivate: isPriv,
-      created: id? DB.products.find(x=>x.id===id).created : Date.now(), updated: Date.now() };
-    if(id) DB.products = DB.products.map(x=>x.id===id?rec:x); else DB.products.push(rec);
-    save(); closeModal(); refresh();
-    toast(id?"היין עודכן":"היין נוסף","ok");
-  };
+  const pSave = $("#pSave");
+  if(pSave){
+    pSave.onclick = ()=>{
+      const nameEl = $("#pName");
+      const name = nameEl ? nameEl.value.trim() : "";
+      if(!name){ toast("צריך שם מוצר כדי לשמור","err"); if(nameEl) nameEl.focus(); return; }
+      const privEl = $("#pIsPrivate");
+      const isPriv = privEl ? privEl.value === "true" : false;
+      const rec = { id: id||uid(), name, 
+        sku: $("#pSku")?$("#pSku").value.trim():"", 
+        cat: $("#pCat")?$("#pCat").value.trim():"",
+        img, 
+        winery: $("#pWin")?$("#pWin").value.trim():"", 
+        vintage: $("#pVin")?$("#pVin").value.trim():"", 
+        varietal: $("#pVar")?$("#pVar").value.trim():"",
+        region: $("#pReg")?$("#pReg").value.trim():"", 
+        vol: ($("#pVol")&&$("#pVol").value!=="") ? n($("#pVol").value) : "",
+        unit: ($("#pUnit")&&$("#pUnit").value.trim()) || "בקבוק", 
+        qty: $("#pQty")?n($("#pQty").value):0, 
+        std: $("#pStd")?n($("#pStd").value):0,
+        max: ($("#pMax")&&$("#pMax").value!=="") ? n($("#pMax").value) : "", 
+        cost: ($("#pCost")&&$("#pCost").value!=="") ? n($("#pCost").value) : "",
+        price: ($("#pPrice")&&$("#pPrice").value!=="") ? n($("#pPrice").value) : "", 
+        supplier: $("#pSup")?$("#pSup").value.trim():"",
+        loc: $("#pLoc")?$("#pLoc").value.trim():"", 
+        expiry: $("#pExp")?$("#pExp").value:"", 
+        notes: $("#pNotes")?$("#pNotes").value.trim():"",
+        isPrivate: isPriv,
+        created: id? DB.products.find(x=>x.id===id).created : Date.now(), updated: Date.now() };
+      if(id) DB.products = DB.products.map(x=>x.id===id?rec:x); else DB.products.push(rec);
+      save(); closeModal(); refresh();
+      toast(id?"היין עודכן":"היין נוסף","ok");
+    };
+  }
 }
 
 function moveModal(pid, type){
@@ -2333,29 +2503,38 @@ function moveModal(pid, type){
     <div class="modal-f"><button class="btn" data-close>ביטול</button><button class="btn primary" id="mSave">רישום התנועה</button></div>`);
 
   const upd = ()=>{
-    const p = DB.products.find(x=>x.id===$("#mPid").value);
-    const ty = $("#mType").value, q = n($("#mQty").value);
-    $("#mHint").textContent = ty==="adjust" ? "— הכמות שנספרה בפועל" : "";
-    $("#mPrice").parentElement.style.display = (ty==="sale") ? "" : "none";
+    const pIdEl = $("#mPid"), tEl = $("#mType"), qEl = $("#mQty");
+    if(!pIdEl || !tEl || !qEl) return;
+    const p = DB.products.find(x=>x.id===pIdEl.value);
+    const ty = tEl.value, q = n(qEl.value);
+    const hEl = $("#mHint"), prEl = $("#mPrice"), prevEl = $("#mPreview");
+    if(hEl) hEl.textContent = ty==="adjust" ? "— הכמות שנספרה בפועל" : "";
+    if(prEl) prEl.parentElement.style.display = (ty==="sale") ? "" : "none";
     if(!p) return;
     const after = ty==="adjust" ? q : n(p.qty) + MOVE[ty].sign*q;
-    $("#mPreview").innerHTML = `מלאי אחרי הפעולה: <b class="num" style="color:${after<0?"var(--crit)":after<n(p.std)?"var(--warn)":"var(--ok)"}">${qty(after)} ${esc(p.unit||"")}</b> · תקן ${qty(p.std)}${after<0?" — התוצאה שלילית":""}`;
+    if(prevEl) prevEl.innerHTML = `מלאי אחרי הפעולה: <b class="num" style="color:${after<0?"var(--crit)":after<n(p.std)?"var(--warn)":"var(--ok)"}">${qty(after)} ${esc(p.unit||"")}</b> · תקן ${qty(p.std)}${after<0?" — התוצאה שלילית":""}`;
   };
-  ["#mPid","#mType","#mQty"].forEach(s=>{ $(s).oninput = upd; $(s).onchange = upd; });
+  ["#mPid","#mType","#mQty"].forEach(s=>{ const el = $(s); if(el){ el.oninput = upd; el.onchange = upd; } });
   upd();
 
-  $("#mSave").onclick = ()=>{
-    const p = DB.products.find(x=>x.id===$("#mPid").value);
-    const ty = $("#mType").value, q = n($("#mQty").value);
-    if(!p){ toast("בחר יין","err"); return; }
-    if(q<=0 && ty!=="adjust"){ toast("הכמות חייבת להיות גדולה מאפס","err"); return; }
-    const mv = { id:uid(), pid:p.id, type:ty, qty:q, price:$("#mPrice").value, date:new Date($("#mDate").value||Date.now()).toISOString(), note:$("#mNote").value.trim(), before:n(p.qty) };
-    p.qty = ty==="adjust" ? q : n(p.qty) + MOVE[ty].sign*q;
-    if(p.qty < 0) p.qty = 0;
-    p.updated = Date.now();
-    DB.moves.push(mv); save(); closeModal(); refresh();
-    toast(`${MOVE[ty].label} נרשמה · ${p.name}: ${qty(p.qty)} ${p.unit||""}`, "ok");
-  };
+  const mSave = $("#mSave");
+  if(mSave){
+    mSave.onclick = ()=>{
+      const pIdEl = $("#mPid"), tEl = $("#mType"), qEl = $("#mQty");
+      if(!pIdEl || !tEl || !qEl) return;
+      const p = DB.products.find(x=>x.id===pIdEl.value);
+      const ty = tEl.value, q = n(qEl.value);
+      if(!p){ toast("בחר ייין","err"); return; }
+      if(q<=0 && ty!=="adjust"){ toast("הכמות חייבת להיות גדולה מאפס","err"); return; }
+      const prEl = $("#mPrice"), dEl = $("#mDate"), nEl = $("#mNote");
+      const mv = { id:uid(), pid:p.id, type:ty, qty:q, price:prEl?prEl.value:"", date:new Date((dEl&&dEl.value)||Date.now()).toISOString(), note:nEl?nEl.value.trim():"", before:n(p.qty) };
+      p.qty = ty==="adjust" ? q : n(p.qty) + MOVE[ty].sign*q;
+      if(p.qty < 0) p.qty = 0;
+      p.updated = Date.now();
+      DB.moves.push(mv); save(); closeModal(); refresh();
+      toast(`${MOVE[ty].label} נרשמה · ${p.name}: ${qty(p.qty)} ${p.unit||""}`, "ok");
+    };
+  }
 }
 
 function quickMove(pid, type){
@@ -2371,17 +2550,28 @@ function quickMove(pid, type){
       <div style="margin-top:12px;font-size:12.5px;color:var(--muted)" id="qPrev"></div>
     </div>
     <div class="modal-f"><button class="btn" data-close>ביטול</button><button class="btn primary" id="qSave">אישור</button></div>`);
-  const upd = ()=>{ const after = n(p.qty)+MOVE[type].sign*n($("#qQty").value);
-    $("#qPrev").innerHTML = `מלאי אחרי: <b class="num">${qty(Math.max(0,after))} ${esc(p.unit||"")}</b> · תקן ${qty(p.std)}`; };
-  $("#qQty").oninput = upd; upd();
-  $("#qSave").onclick = ()=>{
-    const q = n($("#qQty").value);
-    if(q<=0){ toast("הכמות חייבת להיות גדולה מאפס","err"); return; }
-    DB.moves.push({id:uid(), pid:p.id, type, qty:q, price:"", date:new Date().toISOString(), note:$("#qNote").value.trim(), before:n(p.qty)});
-    p.qty = Math.max(0, n(p.qty)+MOVE[type].sign*q); p.updated = Date.now();
-    save(); closeModal(); refresh();
-    toast(`${MOVE[type].label}: ${p.name} → ${qty(p.qty)} ${p.unit||""}`,"ok");
+  const upd = ()=>{ 
+    const qEl = $("#qQty"), prEl = $("#qPrev");
+    if(!qEl || !prEl) return;
+    const after = n(p.qty)+MOVE[type].sign*n(qEl.value);
+    prEl.innerHTML = `מלאי אחרי: <b class="num">${qty(Math.max(0,after))} ${esc(p.unit||"")}</b> · תקן ${qty(p.std)}`; 
   };
+  const qQtyEl = $("#qQty");
+  if(qQtyEl){ qQtyEl.oninput = upd; }
+  upd();
+
+  const qSave = $("#qSave");
+  if(qSave){
+    qSave.onclick = ()=>{
+      const qEl = $("#qQty"), nEl = $("#qNote");
+      const q = qEl ? n(qEl.value) : 0;
+      if(q<=0){ toast("הכמות חייבת להיות גדולה מאפס","err"); return; }
+      DB.moves.push({id:uid(), pid:p.id, type, qty:q, price:"", date:new Date().toISOString(), note:nEl?nEl.value.trim():"", before:n(p.qty)});
+      p.qty = Math.max(0, n(p.qty)+MOVE[type].sign*q); p.updated = Date.now();
+      save(); closeModal(); refresh();
+      toast(`${MOVE[type].label}: ${p.name} → ${qty(p.qty)} ${p.unit||""}`,"ok");
+    };
+  }
 }
 
 function ruleModal(id){
@@ -2405,18 +2595,30 @@ function ruleModal(id){
     </div>
     <div class="modal-f">${id?`<button class="btn danger" data-ruledel="${id}" data-inmodal>מחיקת הכלל</button>`:""}
       <button class="btn" data-close>ביטול</button><button class="btn primary" id="rSave">שמירה</button></div>`);
-  $("#rSave").onclick = ()=>{
-    const rec = {id:id||uid(), name:$("#rName").value.trim()||"כלל ללא שם", field:$("#rField").value, op:$("#rOp").value,
-      val:n($("#rVal").value), sev:$("#rSev").value, scope:$("#rScope").value, on:r.on!==false};
-    if(id) DB.rules = DB.rules.map(x=>x.id===id?rec:x); else DB.rules.push(rec);
-    save(); closeModal(); refresh(); toast(id?"הכלל עודכן":"הכלל נוסף","ok");
-  };
+  
+  const rSave = $("#rSave");
+  if(rSave){
+    rSave.onclick = ()=>{
+      const rec = {id:id||uid(), 
+        name: $("#rName")?$("#rName").value.trim()||"כלל ללא שם":"כלל", 
+        field: $("#rField")?$("#rField").value:"qty", 
+        op: $("#rOp")?$("#rOp").value:"lt",
+        val: $("#rVal")?n($("#rVal").value):0, 
+        sev: $("#rSev")?$("#rSev").value:"warn", 
+        scope: $("#rScope")?$("#rScope").value:"", 
+        on: r.on!==false};
+      if(id) DB.rules = DB.rules.map(x=>x.id===id?rec:x); else DB.rules.push(rec);
+      save(); closeModal(); refresh(); toast(id?"הכלל עודכן":"הכלל נוסף","ok");
+    };
+  }
 }
+
 function confirmModal(title, text, label, fn){
   openModal(`<div class="modal-h"><div class="modal-t">${esc(title)}</div></div>
     <div class="modal-b"><p style="font-size:14px;line-height:1.6">${esc(text)}</p></div>
     <div class="modal-f"><button class="btn" data-close>ביטול</button><button class="btn danger" id="cYes">${esc(label)}</button></div>`);
-  $("#cYes").onclick = ()=>{ fn(); closeModal(); };
+  const cYes = $("#cYes");
+  if(cYes) cYes.onclick = ()=>{ fn(); closeModal(); };
 }
 </script>
 
@@ -2437,35 +2639,47 @@ function refresh(){
 function applyTheme(){
   const dark = DB.settings.theme === "dark";
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  $("#themeIcon").setAttribute("href", dark ? "#i-sun" : "#i-moon");
-  $("#themeBtn").title = dark ? "מעבר למצב יום" : "מעבר למצב לילה";
-  $("#setTheme").classList.toggle("on", dark);
-  $('meta[name=theme-color]').setAttribute("content", dark ? "#0E141A" : "#6C2A47");
+  const tIco = $("#themeIcon");
+  if(tIco) tIco.setAttribute("href", dark ? "#i-sun" : "#i-moon");
+  const tBtn = $("#themeBtn");
+  if(tBtn) tBtn.title = dark ? "מעבר למצב יום" : "מעבר למצב לילה";
+  const sTheme = $("#setTheme");
+  if(sTheme) sTheme.classList.toggle("on", dark);
+  const mMeta = $('meta[name=theme-color]');
+  if(mMeta) mMeta.setAttribute("content", dark ? "#0E141A" : "#6C2A47");
 }
+
 function toggleTheme(){ DB.settings.theme = DB.settings.theme==="dark" ? "light" : "dark"; save(); applyTheme(); setTimeout(refresh,20); }
 
 function renderSettings(){
-  $("#setOrg").value = DB.settings.org;
-  $("#setCur").value = DB.settings.currency;
-  $("#setStd").value = DB.settings.defStd;
-  $("#setExp").value = DB.settings.expDays;
-  $("#orgName").textContent = DB.settings.org;
+  const sOrg = $("#setOrg"), sCur = $("#setCur"), sStd = $("#setStd"), sExp = $("#setExp"), oName = $("#orgName");
+  if(sOrg) sOrg.value = DB.settings.org;
+  if(sCur) sCur.value = DB.settings.currency;
+  if(sStd) sStd.value = DB.settings.defStd;
+  if(sExp) sExp.value = DB.settings.expDays;
+  if(oName) oName.textContent = DB.settings.org;
   document.title = DB.settings.org + " — ניהול מלאי";
+
   let size = 0; try{ size = (localStorage.getItem(KEY)||"").length; }catch(e){}
   const kb = size/1024, pct = Math.min(100, kb/5120*100);
   const imgs = DB.products.filter(p=>p.img).length;
-  $("#storeInfo").textContent = `בשימוש ${kb<1024?kb.toFixed(0)+" ק״ב":(kb/1024).toFixed(1)+" מ״ב"} מתוך כ־5 מ״ב זמינים · ${imgs} תמונות מתוך ${DB.products.length} יינות. הנתונים נשמרים בדפדפן הזה בלבד, בלי שרת — לכן העבודה זהה אונליין ואופליין. למעבר מכשיר: הורד גיבוי וטען אותו שם.`;
+  const sInfo = $("#storeInfo");
+  if(sInfo) sInfo.textContent = `בשימוש ${kb<1024?kb.toFixed(0)+" ק״ב":(kb/1024).toFixed(1)+" מ״ב"} מתוך כ־5 מ״ב זמינים · ${imgs} תמונות מתוך ${DB.products.length} יינות. הנתונים נשמרים בדפדפן הזה בלבד, בלי שרת — לכן העבודה זהה אונליין ואופליין. למעבר מכשיר: הורד גיבוי וטען אותו שם.`;
   const bar = $("#storeBar");
-  bar.style.width = pct.toFixed(1)+"%";
-  bar.className = pct>90 ? "full" : pct>70 ? "hot" : "";
+  if(bar){
+    bar.style.width = pct.toFixed(1)+"%";
+    bar.className = pct>90 ? "full" : pct>70 ? "hot" : "";
+  }
 }
+
 ["#setOrg","#setCur","#setStd","#setExp"].forEach(s=>{
   document.addEventListener("change", e=>{
     if(!e.target.closest(s)) return;
-    DB.settings.org = $("#setOrg").value.trim() || "מחסן";
-    DB.settings.currency = $("#setCur").value;
-    DB.settings.defStd = n($("#setStd").value);
-    DB.settings.expDays = n($("#setExp").value);
+    const sOrg = $("#setOrg"), sCur = $("#setCur"), sStd = $("#setStd"), sExp = $("#setExp");
+    DB.settings.org = sOrg ? sOrg.value.trim() || "מחסן" : "מחסן";
+    DB.settings.currency = sCur ? sCur.value : "₪";
+    DB.settings.defStd = sStd ? n(sStd.value) : 6;
+    DB.settings.expDays = sExp ? n(sExp.value) : 90;
     save(); renderSettings(); refresh(); toast("ההגדרות נשמרו","ok");
   });
 });
@@ -2476,10 +2690,12 @@ function cleanDB(){
   if(c.settings && c.settings.gh) c.settings.gh.token = "";
   return c;
 }
+
 function exportBackup(){
   dl(JSON.stringify(cleanDB(),null,2), `yeynot-backup-${today()}.json`, "application/json");
   toast("קובץ הגיבוי ירד — שמור אותו בריפו בגיטהאב","ok");
 }
+
 function importBackup(file){
   const keepToken = (DB.settings.gh||{}).token || "";
   const fr = new FileReader();
@@ -2498,6 +2714,7 @@ function importBackup(file){
   };
   fr.readAsText(file);
 }
+
 function loadDemo(){
   const W = (name,winery,vintage,varietal,cat,region,sku,q,std,max,cost,price,loc,exp,isPrivate=false)=>({
     id:uid(), name, winery, vintage, varietal, cat, region, sku, unit:"בקבוק", vol:750,
@@ -2544,7 +2761,8 @@ document.addEventListener("click", e=>{
   const t = e.target;
   const nav = t.closest("[data-view]");           if(nav) return go(nav.dataset.view);
   const gt  = t.closest("[data-goto]");           if(gt)  return go(gt.dataset.goto);
-  if(t.closest("[data-close]") || t===$("#veil")) return closeModal();
+  const veilEl = $("#veil");
+  if(t.closest("[data-close]") || (veilEl && t===veilEl)) return closeModal();
 
   const lk = t.closest("[data-link]"); if(lk) return shareLink("#/product/" + encodeURIComponent(lk.dataset.link));
   const pv = t.closest("[data-pv]");   if(pv) { ui.pv = pv.dataset.pv; return renderProducts(); }
@@ -2590,8 +2808,8 @@ document.addEventListener("click", e=>{
 
   const re = t.closest("[data-ruleedit]"); if(re) return ruleModal(re.dataset.ruleedit);
   const ro = t.closest("[data-ruleon]");
-  if(ro){ const r = DB.rules.find(x=>x.id===ro.dataset.ruleon); r.on=!r.on; save(); renderAlerts(); renderDash();
-    return toast(r.on?"הכלל הופעל":"הכלל הושבת","ok"); }
+  if(ro){ const r = DB.rules.find(x=>x.id===ro.dataset.ruleon); if(r){ r.on=!r.on; save(); renderAlerts(); renderDash();
+    return toast(r.on?"הכלל הופעל":"הכלל הושבת","ok"); } }
   const rd = t.closest("[data-ruledel]");
   if(rd){ const id = rd.dataset.ruledel;
     return confirmModal("מחיקת כלל","הכלל יוסר וההתראות שנוצרו ממנו ייעלמו.","מחיקה",()=>{
@@ -2607,7 +2825,7 @@ document.addEventListener("click", e=>{
 });
 
 document.addEventListener("input", e=>{
-  if(e.target.dataset.cartset !== undefined){
+  if(e.target.dataset && e.target.dataset.cartset !== undefined){
     const idx = parseInt(e.target.dataset.cartset);
     const val = Math.max(1, parseInt(e.target.value)||1);
     ui.cart[idx].qty = val;
@@ -2617,57 +2835,89 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape") closeModal();
-  if(e.key==="/" && !/input|textarea|select/i.test(e.target.tagName)){ e.preventDefault(); $("#globalSearch").focus(); }
+  if(e.key==="/" && !/input|textarea|select/i.test(e.target.tagName)){ 
+    e.preventDefault(); 
+    const gs = $("#globalSearch");
+    if(gs) gs.focus(); 
+  }
 });
 
-$("#globalSearch").addEventListener("input", e=>{ ui.q = e.target.value; renderProducts(); renderPrivateFridge(); renderMoves(); });
-if($("#orderSearch")) $("#orderSearch").addEventListener("input", renderOrderPage);
-if($("#debtSearch")) $("#debtSearch").addEventListener("input", renderDebtsPage);
-if($("#clearCartBtn")) $("#clearCartBtn").onclick = ()=>{ ui.cart = []; renderCart(); };
-if($("#submitOrderBtn")) $("#submitOrderBtn").onclick = submitOrder;
+const mainSearch = $("#globalSearch");
+if(mainSearch) mainSearch.addEventListener("input", e=>{ ui.q = e.target.value; renderProducts(); renderPrivateFridge(); renderMoves(); });
 
-["#fCat","#fStatus"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderProducts); });
-["#fMoveType","#fMoveFrom","#fMoveTo"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderMoves); });
-["#rFrom","#rTo","#incPrivate"].forEach(s=>{ if($(s)) $(s).addEventListener("change", renderReports); });
-$("#rQuick").addEventListener("change", e=>{
-  const v = e.target.value; if(!v) return;
-  if(v==="m"){ const d=new Date(); $("#rFrom").value = iso(new Date(d.getFullYear(),d.getMonth(),1)); $("#rTo").value = today(); }
-  else { $("#rFrom").value = iso(Date.now()-(n(v)-1)*864e5); $("#rTo").value = today(); }
-  renderReports();
-});
-$("#shareBtn").onclick = ()=>shareLink();
-$("#themeBtn").onclick = toggleTheme;
-$("#setTheme").onclick = toggleTheme;
-$("#addProdBtn").onclick = ()=>productModal(null, false);
-if($("#addPrivProdBtn")) $("#addPrivProdBtn").onclick = ()=>productModal(null, true);
-$("#addMoveBtn").onclick = ()=>moveModal();
-$("#addRuleBtn").onclick = ()=>ruleModal();
-$("#expProdXls").onclick = ()=>toXLS("מצב מלאי יינות", PROD_HEAD, prodRows(), "yeynot-products-"+today());
-$("#expMovesXls").onclick = ()=>toXLS("יומן תנועות", MOVE_HEAD, moveRows(), "yeynot-moves-"+today());
-$("#repPdf").onclick = printPDF;
-$("#repXls").onclick = ()=>{ const {f,t}=repRange(); const allowPrivate = $("#incPrivate")?$("#incPrivate").checked:false; const st=statsFor(f,t,allowPrivate);
+const oSearch = $("#orderSearch");
+if(oSearch) oSearch.addEventListener("input", renderOrderPage);
+
+const dSearch = $("#debtSearch");
+if(dSearch) dSearch.addEventListener("input", renderDebtsPage);
+
+const cCartBtn = $("#clearCartBtn");
+if(cCartBtn) cCartBtn.onclick = ()=>{ ui.cart = []; renderCart(); };
+
+const sOrderBtn = $("#submitOrderBtn");
+if(sOrderBtn) sOrderBtn.onclick = submitOrder;
+
+["#fCat","#fStatus"].forEach(s=>{ const el = $(s); if(el) el.addEventListener("change", renderProducts); });
+["#fMoveType","#fMoveFrom","#fMoveTo"].forEach(s=>{ const el = $(s); if(el) el.addEventListener("change", renderMoves); });
+["#rFrom","#rTo","#incPrivate"].forEach(s=>{ const el = $(s); if(el) el.addEventListener("change", renderReports); });
+
+const rQuick = $("#rQuick");
+if(rQuick){
+  rQuick.addEventListener("change", e=>{
+    const v = e.target.value; if(!v) return;
+    const rf = $("#rFrom"), rt = $("#rTo");
+    if(v==="m"){ 
+      const d=new Date(); 
+      if(rf) rf.value = iso(new Date(d.getFullYear(),d.getMonth(),1)); 
+      if(rt) rt.value = today(); 
+    } else { 
+      if(rf) rf.value = iso(Date.now()-(n(v)-1)*864e5); 
+      if(rt) rt.value = today(); 
+    }
+    renderReports();
+  });
+}
+
+const shareBtn = $("#shareBtn"); if(shareBtn) shareBtn.onclick = ()=>shareLink();
+const themeBtn = $("#themeBtn"); if(themeBtn) themeBtn.onclick = toggleTheme;
+const setTheme = $("#setTheme"); if(setTheme) setTheme.onclick = toggleTheme;
+const addProdBtn = $("#addProdBtn"); if(addProdBtn) addProdBtn.onclick = ()=>productModal(null, false);
+const addPrivBtn = $("#addPrivProdBtn"); if(addPrivBtn) addPrivBtn.onclick = ()=>productModal(null, true);
+const addMoveBtn = $("#addMoveBtn"); if(addMoveBtn) addMoveBtn.onclick = ()=>moveModal();
+const addRuleBtn = $("#addRuleBtn"); if(addRuleBtn) addRuleBtn.onclick = ()=>ruleModal();
+
+const expProd = $("#expProdXls"), expMoves = $("#expMovesXls"), repPdfBtn = $("#repPdf"), repXlsBtn = $("#repXls"), repCsvBtn = $("#repCsv");
+if(expProd) expProd.onclick = ()=>toXLS("מצב מלאי יינות", PROD_HEAD, prodRows(), "yeynot-products-"+today());
+if(expMoves) expMoves.onclick = ()=>toXLS("יומן תנועות", MOVE_HEAD, moveRows(), "yeynot-moves-"+today());
+if(repPdfBtn) repPdfBtn.onclick = printPDF;
+if(repXlsBtn) repXlsBtn.onclick = ()=>{ const {f,t}=repRange(); const allowPrivate = $("#incPrivate")?$("#incPrivate").checked:false; const st=statsFor(f,t,allowPrivate);
   toXLS(`סיכום ${dShort(f)} עד ${dShort(t)}`, ["יין","מק״ט","נכנס","יצא","נמכר","הכנסה","עלות","רווח","מלאי כעת"],
     st.rows.map(r=>[r.name,r.sku||"",r.in,r.out,r.sold,r.rev.toFixed(2),r.cost.toFixed(2),(r.rev-r.cost).toFixed(2),r.p?n(r.p.qty):""]), "yeynot-report-"+f+"_"+t); };
-$("#repCsv").onclick = ()=>{ const {f,t}=repRange(); const allowPrivate = $("#incPrivate")?$("#incPrivate").checked:false; const st=statsFor(f,t,allowPrivate);
+if(repCsvBtn) repCsvBtn.onclick = ()=>{ const {f,t}=repRange(); const allowPrivate = $("#incPrivate")?$("#incPrivate").checked:false; const st=statsFor(f,t,allowPrivate);
   toCSV(["יין","מק״ט","נכנס","יצא","נמכר","הכנסה","עלות","רווח","מלאי כעת"],
     st.rows.map(r=>[r.name,r.sku||"",r.in,r.out,r.sold,r.rev.toFixed(2),r.cost.toFixed(2),(r.rev-r.cost).toFixed(2),r.p?n(r.p.qty):""]), "yeynot-report-"+f+"_"+t); };
-$("#bkExport").onclick = exportBackup;
-$("#bkImport").onclick = ()=>$("#bkFile").click();
-$("#bkFile").onchange = e=>{ if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=""; };
-$("#bkDemo").onclick = ()=>confirmModal("טעינת נתוני הדגמה","הנתונים הקיימים יוחלפו בנתוני דוגמה. מומלץ להוריד גיבוי קודם.","טעינה",loadDemo);
-$("#bkWipe").onclick = ()=>confirmModal("מחיקת כל הנתונים","כל היינות, התמונות, התנועות והכללים יימחקו מהמכשיר הזה. אין דרך לשחזר בלי קובץ גיבוי.","מחיקה מלאה",()=>{
+
+const bkExp = $("#bkExport"), bkImp = $("#bkImport"), bkF = $("#bkFile"), bkD = $("#bkDemo"), bkW = $("#bkWipe");
+if(bkExp) bkExp.onclick = exportBackup;
+if(bkImp && bkF) bkImp.onclick = ()=>bkF.click();
+if(bkF) bkF.onchange = e=>{ if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=""; };
+if(bkD) bkD.onclick = ()=>confirmModal("טעינת נתוני הדגמה","הנתונים הקיימים יוחלפו בנתוני דוגמה. מומלץ להוריד גיבוי קודם.","טעינה",loadDemo);
+if(bkW) bkW.onclick = ()=>confirmModal("מחיקת כל הנתונים","כל היינות, התמונות, התנועות והכללים יימחקו מהמכשיר הזה. אין דרך לשחזר בלי קובץ גיבוי.","מחיקה מלאה",()=>{
   DB = structuredClone(DEF); DB.rules = defaultRules(); save(); applyTheme(); renderSettings(); refresh(); toast("הנתונים נמחקו","warn"); });
 
 /* ---- clock + network ---- */
 function tick(){
   const d = new Date();
-  $("#clockT").textContent = d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  $("#clockD").textContent = d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const cT = $("#clockT"), cD = $("#clockD");
+  if(cT) cT.textContent = d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  if(cD) cD.textContent = d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 }
+
 function net(){
   const on = navigator.onLine;
-  $("#netDot").classList.toggle("off", !on);
-  $("#netTxt").textContent = on ? "מחובר לרשת" : "עובד אופליין";
+  const nDot = $("#netDot"), nTxt = $("#netTxt");
+  if(nDot) nDot.classList.toggle("off", !on);
+  if(nTxt) nTxt.textContent = on ? "מחובר לרשת" : "עובד אופליין";
 }
 addEventListener("online", net); addEventListener("offline", net);
 addEventListener("beforeunload", ()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} });
@@ -2675,8 +2925,10 @@ addEventListener("beforeunload", ()=>{ try{ localStorage.setItem(KEY, JSON.strin
 /* ---- boot ---- */
 load();
 if(!DB.rules.length) DB.rules = defaultRules();
-$("#rFrom").value = iso(Date.now()-29*864e5);
-$("#rTo").value = today();
+const rfInit = $("#rFrom"), rtInit = $("#rTo");
+if(rfInit) rfInit.value = iso(Date.now()-29*864e5);
+if(rtInit) rtInit.value = today();
+
 applyTheme(); renderSettings(); refresh(); tick(); net(); route();
 setInterval(tick, 1000);
 setInterval(()=>{ renderAlerts(); }, 60000);
