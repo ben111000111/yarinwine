@@ -249,14 +249,27 @@ tbody tr:last-child td{border-bottom:none}
 .empty-s{font-size:13px;color:var(--muted);margin-top:4px;max-width:330px;margin-inline:auto}
 
 /* ============ ORDER & DEBT SYSTEM ============ */
-.order-layout{display:grid;grid-template-columns:1fr 340px;gap:16px}
+.order-layout{display:grid;grid-template-columns:1fr 360px;gap:16px}
 @media (max-width:960px){.order-layout{grid-template-columns:1fr}}
-.cart-list{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;padding-inline-end:4px}
-.cart-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--line-soft);border-radius:var(--r-sm)}
-.cart-item-title{font-weight:600;font-size:13px;flex:1;min-width:0}
-.cart-item-price{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.cart-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-inline-end:4px}
+.cart-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--line-soft);border-radius:var(--r-sm);flex-wrap:wrap}
+.cart-item-title{font-weight:600;font-size:13px;flex:1;min-width:120px}
+.cart-item-price{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500}
+.cart-item-price s{opacity:.75}
 .cart-qty-ctrl{display:flex;align-items:center;gap:6px}
 .cart-qty-ctrl input{width:48px;text-align:center;padding:4px}
+.cart-price-row{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.cart-item input.cart-price-in{width:86px;padding:4px 7px;font-size:12.5px;text-align:center}
+.cart-item input.cart-price-in.changed{border-color:var(--warn);background:var(--warn-wash)}
+.cart-price-row .mini{width:25px;height:25px}
+.cart-price-row .mini svg{width:12px;height:12px}
+.disc-row{display:flex;gap:8px;align-items:center}
+.disc-row input{flex:1;min-width:0}
+.sum-line{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px}
+.pay-row{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.pay-row:last-child{border-bottom:none}
+.mini-meter{height:4px;border-radius:3px;background:var(--line-soft);overflow:hidden;margin-top:5px;min-width:60px}
+.mini-meter i{display:block;height:100%;background:var(--ok)}
 
 /* ============ MODAL ============ */
 .veil{position:fixed;inset:0;background:rgba(12,20,28,.5);backdrop-filter:blur(3px);z-index:100;display:none;align-items:center;justify-content:center;padding:18px}
@@ -471,6 +484,8 @@ a.gcard{text-decoration:none;color:inherit}
 <g id="i-up"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></g>
 <g id="i-fridge"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="9" y1="5" x2="9" y2="7"/><line x1="9" y1="14" x2="9" y2="17"/></g>
 <g id="i-refresh"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></g>
+<g id="i-repeat"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></g>
+<g id="i-undo"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></g>
 <g id="i-mode-edit"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>
 <g id="i-cart"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></g>
 <g id="i-debt"><path d="M17 9V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><rect x="9" y="11" width="12" height="8" rx="2"/><path d="M15 15h.01"/></g>
@@ -581,11 +596,21 @@ a.gcard{text-decoration:none;color:inherit}
             <div class="card-h"><span class="card-t">סיכום הזמנה</span><button class="btn sm danger spacer" id="clearCartBtn">ריקון סל</button></div>
             <div class="card-b">
               <div class="cart-list" id="cartList"></div>
-              <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
-                <div class="row"><span style="font-weight:600">סה״כ לתשלום:</span><span class="spacer num" style="font-size:20px;font-weight:700" id="cartTotal">0 ₪</span></div>
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)">
+                <div class="sum-line"><span>סכום ביניים</span><span class="num" id="cartSub">0</span></div>
+                <div class="field" style="margin-top:10px">
+                  <label>הנחה על ההזמנה <span class="hint">— באחוזים או בסכום</span></label>
+                  <div class="disc-row">
+                    <div class="seg" id="discSeg"><button class="seg-b on" type="button" data-disc="pct">%</button><button class="seg-b" type="button" data-disc="amt" id="discAmtBtn">₪</button></div>
+                    <input type="number" id="discVal" min="0" step="any" placeholder="0" inputmode="decimal">
+                    <button class="btn sm" type="button" id="discClear">ללא</button>
+                  </div>
+                </div>
+                <div class="sum-line" id="discLine" hidden><span id="discLbl">הנחה</span><span class="num" id="cartDisc" style="color:var(--crit)"></span></div>
+                <div class="row" style="margin-top:10px"><span style="font-weight:600">סה״כ לתשלום:</span><span class="spacer num" style="font-size:20px;font-weight:700" id="cartTotal">0 ₪</span></div>
               </div>
               <div class="form-grid mt">
-                <div class="field full"><label>שם הלקוח / מסעדה</label><input type="text" id="ordCustomer" placeholder="שם הלקוח"></div>
+                <div class="field full"><label>שם הלקוח / מסעדה</label><input type="text" id="ordCustomer" placeholder="שם הלקוח" list="custList"><datalist id="custList"></datalist></div>
                 <div class="field full"><label>אופן תשלום</label>
                   <select id="ordPayType">
                     <option value="paid">שולם (מזומן / אשראי / העברה)</option>
@@ -598,6 +623,13 @@ a.gcard{text-decoration:none;color:inherit}
             </div>
           </div>
         </div>
+        <div class="card mt">
+          <div class="card-h">
+            <span class="card-t">הזמנות קודמות</span><span class="tag mute" id="ordHistCount">0</span>
+            <input type="text" id="ordHistSearch" placeholder="חיפוש לקוח או יין..." style="max-width:220px;margin-inline-start:auto">
+          </div>
+          <div class="tbl-wrap" style="max-height:440px"><table id="ordHistTbl"></table></div>
+        </div>
       </section>
 
       <!-- DEBTS PAGE -->
@@ -606,7 +638,12 @@ a.gcard{text-decoration:none;color:inherit}
         <div class="card">
           <div class="card-h">
             <span class="card-t">פנקס חובות לקוחות</span>
-            <input type="text" id="debtSearch" placeholder="חיפוש לקוח..." style="max-width:200px;margin-inline-start:auto">
+            <select id="debtFilter" style="width:auto;min-width:130px;margin-inline-start:auto">
+              <option value="open">חובות פתוחים</option>
+              <option value="">הכל</option>
+              <option value="closed">שולמו ונסגרו</option>
+            </select>
+            <input type="text" id="debtSearch" placeholder="חיפוש לקוח..." style="max-width:200px">
           </div>
           <div class="tbl-wrap"><table id="debtsTbl"></table></div>
         </div>
@@ -869,7 +906,7 @@ function safeRemoveStorage(k) {
 }
 
 const DEF = {
-  products: [], moves: [], rules: [], log: [], debts: [],
+  products: [], moves: [], rules: [], log: [], debts: [], orders: [],
   settings: { org:"מחסן יינות", currency:"₪", defStd:6, expDays:90, theme:"light",
     gh: { 
       repo: HARDCODED_GH.repo, 
@@ -884,7 +921,17 @@ const DEF = {
 };
 
 let DB = structuredClone(DEF);
-let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"table", globalEdit:false, cart:[] };
+let ui = { view:"dash", q:"", sortP:{k:"name",d:1}, sortM:{k:"date",d:-1}, pv:"table", globalEdit:false, cart:[], disc:{type:"pct", val:""} };
+
+/* השלמת שדות חסרים בנתונים ישנים / מגיבוי */
+function normalizeDB(){
+  ["products","moves","rules","log","debts","orders"].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k] = []; });
+  DB.debts.forEach(d=>{
+    if(!Array.isArray(d.payments)) d.payments = [];
+    if(!Array.isArray(d.items)) d.items = [];
+    d.paid = n(d.paid); d.amount = n(d.amount);
+  });
+}
 
 /* ---------- persistence ---------- */
 function load(){
@@ -895,10 +942,9 @@ function load(){
       DB = Object.assign(structuredClone(DEF), p);
       DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
       DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{});
-      if(!Array.isArray(DB.log)) DB.log = [];
-      if(!Array.isArray(DB.debts)) DB.debts = [];
     }
   }catch(e){ toast("קובץ הנתונים המקומי פגום. נטענה מערכת ריקה.","err"); }
+  normalizeDB();
 
   try{
     const savedGh = safeGetStorage(GH_KEY);
@@ -928,6 +974,7 @@ function save(){
 /* ---------- utils ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const n  = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+const round2 = v => Math.round(n(v)*100)/100;
 const cur = () => DB.settings.currency || "₪";
 const money = v => cur() + n(v).toLocaleString("he-IL",{minimumFractionDigits:0, maximumFractionDigits:2});
 const qty = v => n(v).toLocaleString("he-IL",{maximumFractionDigits:2});
@@ -1178,7 +1225,7 @@ function emptyBox(t, s, action=""){
    ========================================================== */
 const PAGES = {
   dash:          ["לוח בקרה","תמונת מצב של המרתף והמחסן"],
-  order:         ["הזמנה חדשה","הרכבת סל קניות, עדכון מלאי וחישוב מחיר"],
+  order:         ["הזמנה חדשה","הרכבת סל קניות, הנחות, עדכון מלאי וחישוב מחיר"],
   debts:         ["פנקס חובות","מעקב חובות לקוחות ורישום תשלומים"],
   product:       ["כרטיס יין","כל הפרטים, המלאי וההיסטוריה"],
   products:      ["יינות המחסן","יקבים, בצירים ומלאי מול תקן"],
@@ -1259,8 +1306,8 @@ function go(v){
   if(sc) sc.scrollTop = 0;
 
   if(v==="reports") renderReports();
-  else if(v==="order") renderOrderPage();
-  else if(v==="debts") renderDebtsPage();
+  else if(v==="order"){ renderOrderPage(); setHash("#/order"); }
+  else if(v==="debts"){ renderDebtsPage(); setHash("#/debts"); }
   else if(v==="log"){ if(typeof renderLog==="function") renderLog(); setHash("#/log"); }
   else if(v==="products") renderProducts();
   else if(v==="privateFridge") renderPrivateFridge();
@@ -1375,7 +1422,15 @@ function renderOrderPage(){
     ` : `<tbody><tr><td colspan="4">${emptyBox("לא נמצאו יינות","נסה למחוק את החיפוש")}</td></tr></tbody>`;
   }
 
+  /* רשימת לקוחות קיימים להשלמה אוטומטית */
+  const cl = $("#custList");
+  if(cl){
+    const names = [...new Set([...DB.orders.map(o=>o.customer), ...DB.debts.map(d=>d.customer)].filter(c=>c && c!=="לקוח מזדמן"))];
+    cl.innerHTML = names.map(c=>`<option value="${esc(c)}">`).join("");
+  }
+
   renderCart();
+  renderOrderHistory();
 }
 
 function addToCart(pid){
@@ -1387,92 +1442,226 @@ function addToCart(pid){
     exist.qty += 1;
   } else {
     if(p.qty < 1){ toast("אזהרה: היין אזל מהמלאי!","warn"); }
-    ui.cart.push({ pid: p.id, name: p.name, price: n(p.price), qty: 1 });
+    ui.cart.push({ pid: p.id, name: p.name, price: n(p.price), origPrice: n(p.price), qty: 1 });
   }
   renderCart();
+}
+
+/* חישוב סכום ביניים, הנחה וסה״כ */
+function cartCalc(){
+  const sub = round2(ui.cart.reduce((s,i)=>s + n(i.qty)*n(i.price), 0));
+  const v = n(ui.disc.val);
+  let disc = 0;
+  if(v > 0) disc = ui.disc.type==="pct" ? sub*Math.min(v,100)/100 : Math.min(v, sub);
+  disc = round2(disc);
+  return { sub, disc, total: round2(Math.max(0, sub-disc)) };
+}
+
+function discInvalid(c){
+  const v = n(ui.disc.val);
+  return (ui.disc.type==="pct" && v>100) || (ui.disc.type==="amt" && c.sub>0 && v>c.sub) || v<0;
+}
+
+/* עדכון סכומים בלי לבנות מחדש את הסל — כדי לא לאבד פוקוס בזמן הקלדה */
+function updateCartTotals(){
+  const c = cartCalc();
+  ui.cart.forEach((it,i)=>{ const el = $(`[data-linetot="${i}"]`); if(el) el.textContent = money(n(it.qty)*n(it.price)); });
+  const sEl = $("#cartSub"); if(sEl) sEl.textContent = money(c.sub);
+  const line = $("#discLine"); if(line) line.hidden = !(c.disc > 0);
+  const lbl = $("#discLbl");
+  if(lbl) lbl.textContent = ui.disc.type==="pct" ? `הנחה ${qty(Math.min(n(ui.disc.val),100))}%` : "הנחה בסכום";
+  const cd = $("#cartDisc"); if(cd) cd.textContent = "−" + money(c.disc);
+  const tot = $("#cartTotal"); if(tot) tot.textContent = money(c.total);
+  const dv = $("#discVal"); if(dv) dv.style.borderColor = discInvalid(c) ? "var(--crit)" : "";
 }
 
 function renderCart(){
   const cartList = $("#cartList");
   if(!cartList) return;
+  const ab = $("#discAmtBtn"); if(ab) ab.textContent = cur();
+  $$("#discSeg .seg-b").forEach(b=>b.classList.toggle("on", b.dataset.disc===ui.disc.type));
+  const dv = $("#discVal");
+  if(dv && document.activeElement !== dv) dv.value = ui.disc.val===0 ? "" : (ui.disc.val ?? "");
+
   if(!ui.cart.length){
-    cartList.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">הסל ריק. בחר יינות מהרשימה.</div>`;
-    const totEl = $("#cartTotal");
-    if(totEl) totEl.textContent = money(0);
+    cartList.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">הסל ריק. בחר יינות מהרשימה, או לחץ ״הזמנה חוזרת״ על הזמנה קודמת.</div>`;
+    updateCartTotals();
     return;
   }
-  let total = 0;
   cartList.innerHTML = ui.cart.map((item, idx)=>{
-    const lineTotal = item.qty * item.price;
-    total += lineTotal;
+    const changed = round2(item.price) !== round2(item.origPrice);
     return `<div class="cart-item">
-      <div class="cart-item-title">${esc(item.name)}<div class="cart-item-price">${money(item.price)} ליח׳</div></div>
+      <div class="cart-item-title">${esc(item.name)}
+        <div class="cart-price-row">
+          <input type="number" class="cart-price-in num${changed?" changed":""}" step="any" min="0" inputmode="decimal"
+            value="${round2(item.price)}" data-cartprice="${idx}" title="מחיר ליחידה — שינוי חד פעמי להזמנה זו בלבד, מחיר הקטלוג לא משתנה">
+          <span class="cart-item-price">ליח׳${changed?` · <s>${money(item.origPrice)}</s>`:""}</span>
+          ${changed?`<button class="mini" type="button" data-cartreset="${idx}" title="חזרה למחיר הקטלוג">${svgIco("i-undo")}</button>`:""}
+        </div>
+      </div>
       <div class="cart-qty-ctrl">
         <button class="mini" data-cartchg="${idx}" data-dir="-1">-</button>
         <input type="number" class="num" value="${item.qty}" min="1" data-cartset="${idx}">
         <button class="mini" data-cartchg="${idx}" data-dir="1">+</button>
       </div>
-      <div class="num" style="font-weight:600;min-width:60px;text-align:end">${money(lineTotal)}</div>
+      <div class="num" data-linetot="${idx}" style="font-weight:600;min-width:60px;text-align:end"></div>
       <button class="mini neg" data-cartrem="${idx}">${svgIco("i-trash")}</button>
     </div>`;
   }).join("");
-  const totEl = $("#cartTotal");
-  if(totEl) totEl.textContent = money(total);
+  updateCartTotals();
+}
+
+function resetCart(){
+  ui.cart = [];
+  ui.disc = { type:"pct", val:"" };
+  const dv = $("#discVal"); if(dv) dv.value = "";
 }
 
 function submitOrder(){
   if(!ui.cart.length){ toast("הסל ריק!","err"); return; }
+  const c = cartCalc();
+  if(discInvalid(c)){ toast(ui.disc.type==="pct" ? "הנחה באחוזים חייבת להיות בין 0 ל־100" : "ההנחה גבוהה מסכום ההזמנה","err"); return; }
+  if(ui.cart.some(i=>n(i.price)<0)){ toast("מחיר לא יכול להיות שלילי","err"); return; }
+
   const custEl = $("#ordCustomer"), payEl = $("#ordPayType"), noteEl = $("#ordNote");
   const customer = (custEl ? custEl.value.trim() : "") || "לקוח מזדמן";
   const payType = payEl ? payEl.value : "paid";
   const note = noteEl ? noteEl.value.trim() : "";
   const orderId = uid();
-  let total = 0;
+  const num = orderId.slice(-5).toUpperCase();
+  const nowIso = new Date().toISOString();
+
+  /* ההנחה מתחלקת יחסית על כל השורות, כדי שהכנסות ורווח בדוחות יהיו מדויקים */
+  const ratio = c.sub > 0 ? c.total / c.sub : 1;
+  const discTxt = c.disc > 0 ? ` · הנחה ${ui.disc.type==="pct" ? qty(n(ui.disc.val))+"%" : money(c.disc)}` : "";
 
   for(const item of ui.cart){
     const p = DB.products.find(x=>x.id===item.pid);
-    if(p){
-      p.qty = Math.max(0, n(p.qty) - item.qty);
-      p.updated = Date.now();
-      total += item.qty * item.price;
-      DB.moves.push({
-        id: uid(), pid: p.id, type: "sale", qty: item.qty, price: item.price,
-        date: new Date().toISOString(), note: `הזמנה #${orderId.slice(0,5)} · ${customer} ${note?`(${note})`:''}`, before: n(p.qty)+item.qty
-      });
-    }
+    if(!p) continue;
+    const before = n(p.qty);
+    p.qty = Math.max(0, before - n(item.qty));
+    p.updated = Date.now();
+    const changed = round2(item.price) !== round2(item.origPrice);
+    DB.moves.push({
+      id: uid(), pid: p.id, type: "sale", qty: n(item.qty), price: round2(n(item.price)*ratio),
+      date: nowIso, orderId, before,
+      note: `הזמנה #${num} · ${customer}${changed?` · מחיר מיוחד ${money(item.price)} במקום ${money(item.origPrice)}`:""}${discTxt}${note?` (${note})`:""}`
+    });
   }
+
+  const order = {
+    id: orderId, num, date: nowIso, customer, payType, note,
+    items: ui.cart.map(i=>({ pid:i.pid, name:i.name, qty:n(i.qty), price:round2(i.price), origPrice:round2(i.origPrice) })),
+    sub: c.sub, disc: c.disc, discType: ui.disc.type, discVal: n(ui.disc.val), total: c.total
+  };
+  DB.orders.push(order);
 
   if(payType === "debt"){
     DB.debts.push({
-      id: orderId, customer, amount: total, paid: 0, date: new Date().toISOString(),
-      status: "open", items: [...ui.cart], note
+      id: orderId, orderId, customer, amount: c.total, paid: 0, payments: [], date: nowIso,
+      status: c.total > 0 ? "open" : "closed", items: order.items, note
     });
-    toast(`הזמנה על סך ${money(total)} נרשמה כחוב עבור ${customer}`,"warn");
+    toast(`הזמנה על סך ${money(c.total)} נרשמה כחוב עבור ${customer}`,"warn");
   } else {
-    toast(`הזמנה הושלמה בהצלחה! חויב: ${money(total)}`,"ok");
+    toast(`הזמנה הושלמה בהצלחה! חויב: ${money(c.total)}`,"ok");
   }
+  logIt("move","ok", `הזמנה #${num} · ${customer}`,
+    `${order.items.length} פריטים · ${money(c.total)}${c.disc>0?` (הנחה ${money(c.disc)})`:""} · ${payType==="debt"?"בהקפה":"שולם"}`);
 
-  ui.cart = [];
+  resetCart();
   if(custEl) custEl.value = "";
   if(noteEl) noteEl.value = "";
+  if(payEl) payEl.value = "paid";
   save();
   refresh();
   renderOrderPage();
 }
 
+/* ---------- הזמנה חוזרת ---------- */
+function repeatOrder(id){
+  const o = DB.orders.find(x=>x.id===id) || DB.debts.find(x=>x.id===id);
+  if(!o || !(o.items||[]).length){ toast("אין פריטים לשחזור בהזמנה הזו","warn"); return; }
+  const isDebt = !DB.orders.find(x=>x.id===id);
+  const doIt = ()=>{
+    let missing = 0, low = 0;
+    resetCart();
+    o.items.forEach(it=>{
+      const p = DB.products.find(x=>x.id===it.pid);
+      if(!p){ missing++; return; }
+      if(n(p.qty) < n(it.qty)) low++;
+      ui.cart.push({ pid:p.id, name:p.name, qty:Math.max(1, n(it.qty)),
+        price: it.price!=null && it.price!=="" ? n(it.price) : n(p.price), origPrice: n(p.price) });
+    });
+    if(n(o.discVal) > 0) ui.disc = { type: o.discType || "pct", val: n(o.discVal) };
+    go("order");
+    const custEl = $("#ordCustomer"), payEl = $("#ordPayType"), noteEl = $("#ordNote");
+    if(custEl) custEl.value = o.customer && o.customer!=="לקוח מזדמן" ? o.customer : "";
+    if(payEl) payEl.value = o.payType || (isDebt ? "debt" : "paid");
+    if(noteEl) noteEl.value = "";
+    renderCart();
+    toast(`${ui.cart.length} יינות הועתקו לסל — אפשר לערוך לפני ביצוע`,"ok");
+    if(missing) toast(`${missing} יינות מההזמנה כבר לא קיימים במחסן ולא נוספו`,"warn");
+    if(low) toast(`ל־${low} יינות אין מספיק מלאי לכמות המקורית`,"warn");
+  };
+  if(ui.cart.length) confirmModal("הזמנה חוזרת","הסל הנוכחי יוחלף בפריטים מההזמנה הקודמת.","החלפת הסל", doIt);
+  else doIt();
+}
+
+function renderOrderHistory(){
+  const tbl = $("#ordHistTbl");
+  if(!tbl) return;
+  const sEl = $("#ordHistSearch");
+  const q = (sEl ? sEl.value : "").toLowerCase().trim();
+  const list = [...DB.orders]
+    .filter(o=>!q || `${o.customer} ${o.note||""} ${o.num||""} ${(o.items||[]).map(i=>i.name).join(" ")}`.toLowerCase().includes(q))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const cnt = $("#ordHistCount"); if(cnt) cnt.textContent = DB.orders.length;
+
+  tbl.innerHTML = list.length ? `
+    <thead><tr><th class="no-sort">תאריך</th><th class="no-sort">לקוח</th><th class="no-sort c-hide-s">פריטים</th>
+      <th class="no-sort">סה״כ</th><th class="no-sort c-hide-s">תשלום</th><th class="no-sort"></th></tr></thead>
+    <tbody>${list.slice(0,100).map(o=>{
+      const units = (o.items||[]).reduce((s,i)=>s+n(i.qty),0);
+      const names = (o.items||[]).map(i=>`${i.name} ×${qty(i.qty)}`).join(", ");
+      const debt = o.payType==="debt" ? DB.debts.find(d=>d.id===o.id) : null;
+      const payTag = o.payType!=="debt" ? `<span class="tag ok">שולם</span>`
+        : debt && debt.status==="closed" ? `<span class="tag ok">הקפה · נפרעה</span>`
+        : `<span class="tag warn">הקפה</span>`;
+      return `<tr>
+        <td class="num" style="font-size:12px;white-space:nowrap">${dLong(o.date)}<div class="t-sku">#${esc(o.num||"")}</div></td>
+        <td class="t-name">${esc(o.customer)}</td>
+        <td class="c-hide-s" style="font-size:12.5px;color:var(--muted);max-width:280px">${qty(units)} בקבוקים · ${esc(names.length>80?names.slice(0,80)+"…":names)}</td>
+        <td class="num" style="font-weight:600;white-space:nowrap">${money(o.total)}${o.disc>0?`<div class="t-sku">הנחה ${money(o.disc)}</div>`:""}</td>
+        <td class="c-hide-s">${payTag}</td>
+        <td><div class="t-acts"><button class="btn sm" data-repeat="${o.id}" title="העתקת כל הפריטים מההזמנה לסל">${svgIco("i-repeat")}הזמנה חוזרת</button></div></td>
+      </tr>`;
+    }).join("")}</tbody>`
+    : `<tbody><tr><td>${emptyBox(DB.orders.length?"לא נמצאו הזמנות":"עוד אין הזמנות", DB.orders.length?"נסה חיפוש אחר.":"כל הזמנה שתבצע תישמר כאן, ותוכל לחזור עליה בלחיצה.")}</td></tr></tbody>`;
+}
+
+/* ---------- פנקס חובות ---------- */
+function debtRemain(d){ return round2(n(d.amount) - n(d.paid)); }
+
 function renderDebtsPage(){
-  const searchEl = $("#debtSearch");
+  const searchEl = $("#debtSearch"), fEl = $("#debtFilter");
   const search = (searchEl ? searchEl.value : "").toLowerCase().trim();
-  const list = DB.debts.filter(d => !search || d.customer.toLowerCase().includes(search));
-  
+  const filt = fEl ? fEl.value : "open";
+  const list = DB.debts
+    .filter(d => (!search || d.customer.toLowerCase().includes(search)) && (!filt || d.status===filt))
+    .sort((a,b)=> (a.status==="open"?0:1)-(b.status==="open"?0:1) || new Date(b.date)-new Date(a.date));
+
   const openDebts = DB.debts.filter(d=>d.status==="open");
-  const totalDebtSum = openDebts.reduce((s,d)=>s + (d.amount - d.paid), 0);
+  const totalDebtSum = openDebts.reduce((s,d)=>s + debtRemain(d), 0);
+  const customers = new Set(openDebts.map(d=>d.customer)).size;
+  const since = Date.now() - 30*864e5;
+  const collected30 = DB.debts.flatMap(d=>d.payments||[]).filter(p=>new Date(p.date).getTime()>=since).reduce((s,p)=>s+n(p.amount),0);
 
   const kpisEl = $("#debtKpis");
   if(kpisEl){
     kpisEl.innerHTML = [
-      ["סה״כ חובות פתוחים", money(totalDebtSum), `${openDebts.length} לקוחות בהקפה`, openDebts.length?"k-warn":"k-ok"],
-      ["הזמנות ששולמו במלואן", DB.debts.filter(d=>d.status==="closed").length, "הזמנות לסגירה", "k-ok"]
+      ["סה״כ חובות פתוחים", money(totalDebtSum), `${customers} לקוחות בהקפה · ${openDebts.length} חובות`, openDebts.length?"k-warn":"k-ok"],
+      ["נגבה ב־30 יום", money(collected30), "כולל תשלומים חלקיים", "k-ok"],
+      ["חובות שנסגרו", DB.debts.filter(d=>d.status==="closed").length, "שולמו במלואם", "k-ok"]
     ].map(([l,v,f,c])=>`<div class="kpi ${c}"><div class="kpi-l">${l}</div><div class="kpi-v">${v}</div><div class="kpi-f">${f}</div></div>`).join("");
   }
 
@@ -1480,27 +1669,33 @@ function renderDebtsPage(){
   if(debtsTbl){
     debtsTbl.innerHTML = list.length ? `
       <thead><tr>
-        <th class="no-sort">תאריך</th><th class="no-sort">שם הלקוח</th><th class="no-sort">סכום מקורי</th>
-        <th class="no-sort">שולם</th><th class="no-sort">יתרת חוב</th><th class="no-sort">סטטוס</th><th class="no-sort"></th>
+        <th class="no-sort">תאריך</th><th class="no-sort">שם הלקוח</th><th class="no-sort c-hide-s">סכום מקורי</th>
+        <th class="no-sort c-hide-m">שולם</th><th class="no-sort">יתרת חוב</th><th class="no-sort c-hide-s">סטטוס</th><th class="no-sort"></th>
       </tr></thead>
       <tbody>${list.map(d=>{
-        const remain = d.amount - d.paid;
+        const remain = debtRemain(d);
+        const pct = n(d.amount)>0 ? Math.min(100, n(d.paid)/n(d.amount)*100) : 100;
+        const st = d.status==="closed" ? ["ok","שולם ונסגר"] : n(d.paid)>0 ? ["info","שולם חלקית"] : ["warn","חוב פתוח"];
         return `<tr>
-          <td class="num">${dShort(d.date)}</td>
-          <td class="t-name">${esc(d.customer)}</td>
-          <td class="num">${money(d.amount)}</td>
-          <td class="num" style="color:var(--ok)">${money(d.paid)}</td>
+          <td class="num" style="font-size:12px">${dShort(d.date)}</td>
+          <td><div class="t-name">${esc(d.customer)}</div>${d.note?`<div class="t-sku">${esc(d.note)}</div>`:""}</td>
+          <td class="num c-hide-s">${money(d.amount)}</td>
+          <td class="num c-hide-m" style="color:var(--ok)">${money(d.paid)}
+            <div class="mini-meter"><i style="width:${pct}%"></i></div>
+            <div class="t-sku">${(d.payments||[]).length} תשלומים</div></td>
           <td class="num" style="font-weight:700;color:${remain>0?"var(--crit)":"var(--ok)"}">${money(remain)}</td>
-          <td><span class="tag ${d.status==="open"?"warn":"ok"}">${d.status==="open"?"חוב פתוח":"שולם ונסגר"}</span></td>
+          <td class="c-hide-s"><span class="tag ${st[0]}">${st[1]}</span></td>
           <td>
             <div class="t-acts">
-              ${remain > 0 ? `<button class="btn sm primary" data-paydebt="${d.id}">גביית תשלום</button>` : ''}
+              ${remain > 0 ? `<button class="btn sm primary" data-paydebt="${d.id}">גביית תשלום</button>` : ""}
+              <button class="mini" data-debtinfo="${d.id}" title="פרטים והיסטוריית תשלומים">${svgIco("i-log")}</button>
+              ${(d.items||[]).length ? `<button class="mini" data-repeat="${d.id}" title="הזמנה חוזרת">${svgIco("i-repeat")}</button>` : ""}
               <button class="mini neg" data-deldebt="${d.id}" title="מחיקת חוב">${svgIco("i-trash")}</button>
             </div>
           </td>
         </tr>`;
       }).join("")}</tbody>
-    ` : `<tbody><tr><td colspan="7">${emptyBox("אין חובות רשומים","כל החובות שולמו או שלא נרשמו הקפות.")}</td></tr></tbody>`;
+    ` : `<tbody><tr><td colspan="7">${emptyBox(filt==="open"?"אין חובות פתוחים":"אין חובות להצגה", filt==="open"?"כל החובות שולמו או שלא נרשמו הקפות.":"נסה סינון או חיפוש אחר.")}</td></tr></tbody>`;
   }
 
   const badge = openDebts.length;
@@ -1514,39 +1709,116 @@ function renderDebtsPage(){
 function payDebtModal(id){
   const d = DB.debts.find(x=>x.id===id);
   if(!d) return;
-  const remain = d.amount - d.paid;
+  if(!Array.isArray(d.payments)) d.payments = [];
+  const remain = debtRemain(d);
+  const tracked = d.payments.reduce((s,p)=>s+n(p.amount),0);
+  const legacy = round2(n(d.paid) - tracked);
+  const pct = n(d.amount)>0 ? Math.min(100, n(d.paid)/n(d.amount)*100) : 100;
+  const hist = [...d.payments].sort((a,b)=>new Date(b.date)-new Date(a.date));
+
   openModal(`
-    <div class="modal-h"><div class="modal-t">גביית חוב — ${esc(d.customer)}</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
+    <div class="modal-h"><div class="modal-t">${remain>0?"גביית תשלום":"פרטי חוב"} — ${esc(d.customer)}</div><button class="icon-btn spacer" data-close>${svgIco("i-x")}</button></div>
     <div class="modal-b">
-      <div class="kpis mb" style="margin-bottom:14px">
-        <div class="kpi"><div class="kpi-l">יתרת חוב נוכחית</div><div class="kpi-v">${money(remain)}</div></div>
+      <div class="kpis" style="margin-bottom:10px">
+        <div class="kpi"><div class="kpi-l">סכום החוב</div><div class="kpi-v">${money(d.amount)}</div><div class="kpi-f">נפתח ${dShort(d.date)}</div></div>
+        <div class="kpi k-ok"><div class="kpi-l">שולם עד כה</div><div class="kpi-v">${money(d.paid)}</div><div class="kpi-f">${d.payments.length} תשלומים</div></div>
+        <div class="kpi ${remain>0?"k-crit":"k-ok"}"><div class="kpi-l">יתרה</div><div class="kpi-v">${money(remain)}</div><div class="kpi-f">${Math.round(pct)}% נפרע</div></div>
       </div>
-      <div class="field"><label>סכום הנגבה כעת</label><input type="number" id="payAmount" value="${remain}" max="${remain}"></div>
+      <div class="meter" style="max-width:none;margin-bottom:18px"><i style="width:${pct}%;background:var(--ok)"></i></div>
+
+      ${remain>0 ? `
+      <div class="eyebrow">תשלום חדש</div>
+      <div class="form-grid">
+        <div class="field full"><label>סכום לגבייה עכשיו <span class="hint">— אפשר לפרוע רק חלק מהחוב</span></label>
+          <input type="number" id="payAmount" step="any" min="0" max="${remain}" placeholder="עד ${money(remain)}" inputmode="decimal">
+          <div class="row" style="gap:6px;margin-top:6px">
+            <button class="btn sm" type="button" data-payq="0.25">25%</button>
+            <button class="btn sm" type="button" data-payq="0.5">חצי</button>
+            <button class="btn sm" type="button" data-payq="0.75">75%</button>
+            <button class="btn sm" type="button" data-payq="1">מלוא היתרה</button>
+          </div>
+        </div>
+        <div class="field"><label>אמצעי תשלום</label><select id="payMethod">
+          <option>מזומן</option><option>אשראי</option><option>העברה בנקאית</option><option>צ׳ק</option><option>ביט / פייבוקס</option></select></div>
+        <div class="field"><label>הערה</label><input type="text" id="payNote" placeholder="מספר צ׳ק, אסמכתא…"></div>
+        <div class="full" id="payPrev" style="font-size:12.5px;color:var(--muted)"></div>
+      </div>` : ""}
+
+      ${(d.items||[]).length ? `
+      <div class="eyebrow" style="margin-top:18px">פריטים בהזמנה</div>
+      <div>${d.items.map(i=>`<div class="pay-row"><span style="flex:1">${esc(i.name)}</span>
+        <span class="num" style="color:var(--muted)">${qty(i.qty)} × ${money(i.price)}</span>
+        <span class="num" style="font-weight:600;min-width:70px;text-align:end">${money(n(i.qty)*n(i.price))}</span></div>`).join("")}</div>` : ""}
+
+      <div class="eyebrow" style="margin-top:18px">היסטוריית תשלומים</div>
+      ${hist.length || legacy>0.009 ? `<div>
+        ${hist.map(p=>`<div class="pay-row">
+          <span class="num" style="font-size:12px;color:var(--muted);white-space:nowrap">${dLong(p.date)}</span>
+          <span style="flex:1;min-width:0">${esc(p.method||"")}${p.note?` · <span style="color:var(--muted)">${esc(p.note)}</span>`:""}</span>
+          <span class="num" style="font-weight:700;color:var(--ok)">${money(p.amount)}</span>
+          <button class="mini neg" type="button" data-delpay="${d.id}|${p.id}" title="ביטול התשלום">${svgIco("i-undo")}</button>
+        </div>`).join("")}
+        ${legacy>0.009?`<div class="pay-row"><span style="flex:1;color:var(--muted)">תשלומים קודמים (לפני מעקב היסטוריה)</span><span class="num" style="font-weight:700;color:var(--ok)">${money(legacy)}</span></div>`:""}
+      </div>` : `<div style="font-size:13px;color:var(--muted)">עוד לא נרשמו תשלומים על החוב הזה.</div>`}
     </div>
     <div class="modal-f">
-      <button class="btn" data-close>ביטול</button>
-      <button class="btn primary" id="confirmPayBtn">אישור תשלום</button>
+      ${(d.items||[]).length ? `<button class="btn" data-repeat="${d.id}">${svgIco("i-repeat")}הזמנה חוזרת</button>` : ""}
+      <button class="btn" data-close>סגירה</button>
+      ${remain>0 ? `<button class="btn primary" id="confirmPayBtn">רישום התשלום</button>` : ""}
     </div>
-  `);
+  `, true);
+
+  if(remain <= 0) return;
+  const amtEl = $("#payAmount"), prev = $("#payPrev");
+  const upd = ()=>{
+    if(!amtEl || !prev) return;
+    const a = n(amtEl.value);
+    if(a <= 0){ prev.textContent = ""; amtEl.style.borderColor = ""; return; }
+    if(a > remain + 0.005){ prev.innerHTML = `<b style="color:var(--crit)">הסכום גבוה מהיתרה (${money(remain)})</b>`; amtEl.style.borderColor = "var(--crit)"; return; }
+    amtEl.style.borderColor = "";
+    const left = round2(remain - a);
+    prev.innerHTML = left > 0
+      ? `אחרי התשלום תישאר יתרה של <b class="num" style="color:var(--warn)">${money(left)}</b> והחוב יישאר פתוח.`
+      : `<b style="color:var(--ok)">החוב ייפרע במלואו וייסגר.</b>`;
+  };
+  if(amtEl){ amtEl.oninput = upd; setTimeout(()=>amtEl.focus(), 80); }
+  $$("[data-payq]").forEach(b=>b.onclick = ()=>{ if(amtEl){ amtEl.value = round2(remain*n(b.dataset.payq)); upd(); } });
 
   const btn = $("#confirmPayBtn");
   if(btn){
     btn.onclick = ()=>{
-      const amtEl = $("#payAmount");
-      const amt = amtEl ? n(amtEl.value) : 0;
-      if(amt <= 0){ toast("הזן סכום תקין","err"); return; }
-      d.paid += amt;
-      if(d.paid >= d.amount){
-        d.paid = d.amount;
-        d.status = "closed";
-      }
+      const amt = round2(amtEl ? amtEl.value : 0);
+      if(amt <= 0){ toast("הזן סכום תקין","err"); if(amtEl) amtEl.focus(); return; }
+      if(amt > remain + 0.005){ toast(`אי אפשר לגבות יותר מהיתרה (${money(remain)})`,"err"); return; }
+      const method = $("#payMethod") ? $("#payMethod").value : "";
+      const note = $("#payNote") ? $("#payNote").value.trim() : "";
+      d.payments.push({ id: uid(), date: new Date().toISOString(), amount: amt, method, note });
+      d.paid = round2(n(d.paid) + amt);
+      const left = debtRemain(d);
+      if(left <= 0.009){ d.paid = n(d.amount); d.status = "closed"; }
+      logIt("data","ok", `תשלום על חוב · ${d.customer}`, `${money(amt)} · ${method}${note?" · "+note:""} · יתרה ${money(Math.max(0,left))}`);
       save();
       closeModal();
       refresh();
-      renderDebtsPage();
-      toast("התשלום נרשם בהצלחה!","ok");
+      toast(left > 0.009 ? `נרשם תשלום של ${money(amt)} · נותרה יתרה ${money(left)}` : `החוב של ${d.customer} נפרע במלואו ונסגר`, "ok");
     };
   }
+}
+
+function deletePayment(debtId, payId){
+  const d = DB.debts.find(x=>x.id===debtId);
+  if(!d) return;
+  const p = (d.payments||[]).find(x=>x.id===payId);
+  if(!p) return;
+  confirmModal("ביטול תשלום", `התשלום של ${money(p.amount)} מ־${dShort(p.date)} יבוטל והסכום יחזור ליתרת החוב.`, "ביטול התשלום", ()=>{
+    d.payments = d.payments.filter(x=>x.id!==payId);
+    d.paid = round2(Math.max(0, n(d.paid) - n(p.amount)));
+    if(debtRemain(d) > 0.009) d.status = "open";
+    logIt("data","warn", `בוטל תשלום על חוב · ${d.customer}`, `${money(p.amount)} · יתרה ${money(debtRemain(d))}`);
+    save(); refresh();
+    toast("התשלום בוטל","warn");
+    setTimeout(()=>payDebtModal(debtId), 0);
+  });
 }
 
 /* ---------- products ---------- */
@@ -2193,8 +2465,7 @@ function applyRemote(p){
   DB.settings = Object.assign(structuredClone(DEF.settings), p.settings || {});
   DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings && p.settings.gh) || {},
     { repo:keep.repo, path:keep.path, branch:keep.branch, token:keep.token, auto:keep.auto, lastSync:Date.now() });
-  if(!Array.isArray(DB.log)) DB.log = [];
-  if(!Array.isArray(DB.debts)) DB.debts = [];
+  normalizeDB();
   save(); saveSync(); applyTheme(); renderSettings(); refresh(); syncUI();
 }
 
@@ -2769,8 +3040,7 @@ function importBackup(file){
       DB = Object.assign(structuredClone(DEF), p);
       DB.settings = Object.assign(structuredClone(DEF.settings), p.settings||{});
       DB.settings.gh = Object.assign(structuredClone(DEF.settings.gh), (p.settings&&p.settings.gh)||{}, {token:keepToken});
-      if(!Array.isArray(DB.log)) DB.log = [];
-      if(!Array.isArray(DB.debts)) DB.debts = [];
+      normalizeDB();
       save(); applyTheme(); renderSettings(); refresh();
       toast(`שוחזרו ${DB.products.length} יינות ו־${DB.moves.length} תנועות`,"ok");
     }catch(e){ toast("הקובץ אינו גיבוי תקין של המערכת","err"); }
@@ -2797,8 +3067,20 @@ function loadDemo(){
     W("קברנה פרטי נדיר","יקב בוטיק","2017","קברנה סוביניון","אדום","גליל","PRIV-01", 3, 0, 10, 150, 350, "מקרר פרטי - מדף עליון", "", true)
   ];
   DB.moves = [];
+  DB.orders = [];
+  const demoItems = [
+    { pid: DB.products[0].id, name: DB.products[0].name, qty: 6, price: 129, origPrice: 129 },
+    { pid: DB.products[7].id, name: DB.products[7].name, qty: 6, price: 99,  origPrice: 99 },
+    { pid: DB.products[2].id, name: DB.products[2].name, qty: 3, price: 85,  origPrice: 85 }
+  ];
+  const demoSub = demoItems.reduce((s,i)=>s+i.qty*i.price,0);
+  const demoDate = new Date(Date.now()-5*864e5).toISOString();
+  const demoId = uid();
+  DB.orders.push({ id: demoId, num: demoId.slice(-5).toUpperCase(), date: demoDate, customer: "מסעדת השף", payType: "debt", note: "",
+    items: demoItems, sub: demoSub, disc: round2(demoSub*0.1), discType: "pct", discVal: 10, total: round2(demoSub*0.9) });
   DB.debts = [
-    { id: uid(), customer: "מסעדת השף", amount: 1250, paid: 500, date: new Date().toISOString(), status: "open", items: [] }
+    { id: demoId, orderId: demoId, customer: "מסעדת השף", amount: round2(demoSub*0.9), paid: 500, date: demoDate, status: "open", items: demoItems, note: "",
+      payments: [{ id: uid(), date: new Date(Date.now()-2*864e5).toISOString(), amount: 500, method: "מזומן", note: "תשלום ראשון" }] }
   ];
   const now = Date.now();
   for(let d=59; d>=0; d--){
@@ -2816,7 +3098,7 @@ function loadDemo(){
   }
   if(!DB.rules.length) DB.rules = defaultRules();
   save(); refresh(); renderSettings();
-  toast("נטענו 10 יינות, חובות ו־60 ימי תנועות לדוגמה","ok");
+  toast("נטענו 10 יינות, הזמנה, חוב ו־60 ימי תנועות לדוגמה","ok");
 }
 
 /* ---- global events SAFE ---- */
@@ -2853,10 +3135,28 @@ document.addEventListener("click", e=>{
     ui.cart.splice(parseInt(cr.dataset.cartrem), 1);
     return renderCart();
   }
+  const crs = t.closest("[data-cartreset]");
+  if(crs && crs.dataset){
+    const it = ui.cart[parseInt(crs.dataset.cartreset)];
+    if(it){ it.price = it.origPrice; renderCart(); toast("הוחזר מחיר הקטלוג","ok"); }
+    return;
+  }
+  const ds = t.closest("[data-disc]");
+  if(ds && ds.dataset){
+    ui.disc.type = ds.dataset.disc;
+    renderCart();
+    const dv = $("#discVal"); if(dv) dv.focus();
+    return;
+  }
+  const rp = t.closest("[data-repeat]");
+  if(rp && rp.dataset){ closeModal(); return repeatOrder(rp.dataset.repeat); }
   const pd = t.closest("[data-paydebt]"); if(pd && pd.dataset) return payDebtModal(pd.dataset.paydebt);
+  const di = t.closest("[data-debtinfo]"); if(di && di.dataset) return payDebtModal(di.dataset.debtinfo);
+  const dp = t.closest("[data-delpay]");
+  if(dp && dp.dataset){ const [dId, pId] = dp.dataset.delpay.split("|"); return deletePayment(dId, pId); }
   const dd = t.closest("[data-deldebt]");
   if(dd && dd.dataset){
-    return confirmModal("מחיקת חוב", "האם למחוק את החוב מהפנקס?", "מחיקה", ()=>{
+    return confirmModal("מחיקת חוב", "האם למחוק את החוב מהפנקס? המלאי וההזמנה לא ישתנו.", "מחיקה", ()=>{
       DB.debts = DB.debts.filter(x=>x.id!==dd.dataset.deldebt);
       save(); refresh(); renderDebtsPage(); toast("החוב נמחק","warn");
     });
@@ -2892,17 +3192,26 @@ document.addEventListener("click", e=>{
   if(mk && mk.dataset){ const k = mk.dataset.mk; ui.sortM = {k, d: ui.sortM.k===k ? -ui.sortM.d : 1}; return renderMoves(); }
 });
 
+/* הקלדה בסל: מעדכנים רק סכומים כדי לא לאבד פוקוס; בסיום (change) בונים מחדש */
 document.addEventListener("input", e=>{
   if(!e || !e.target) return;
   const target = e.target.nodeType === 3 ? e.target.parentNode : e.target;
-  if(target && target.dataset && target.dataset.cartset !== undefined){
-    const idx = parseInt(target.dataset.cartset);
-    const val = Math.max(1, parseInt(target.value)||1);
-    if(ui.cart[idx]){
-      ui.cart[idx].qty = val;
-      renderCart();
-    }
+  if(!target || !target.dataset) return;
+  if(target.dataset.cartset !== undefined){
+    const it = ui.cart[parseInt(target.dataset.cartset)];
+    if(it){ it.qty = Math.max(1, parseInt(target.value)||1); updateCartTotals(); }
+    return;
   }
+  if(target.dataset.cartprice !== undefined){
+    const it = ui.cart[parseInt(target.dataset.cartprice)];
+    if(it){ it.price = Math.max(0, n(target.value)); updateCartTotals(); }
+    return;
+  }
+  if(target.id === "discVal"){ ui.disc.val = target.value; updateCartTotals(); }
+});
+document.addEventListener("change", e=>{
+  if(!e || !e.target || !e.target.dataset) return;
+  if(e.target.dataset.cartset !== undefined || e.target.dataset.cartprice !== undefined) renderCart();
 });
 
 document.addEventListener("keydown", e=>{
@@ -2921,11 +3230,20 @@ if(mainSearch) mainSearch.addEventListener("input", e=>{ if(e && e.target) ui.q 
 const oSearch = $("#orderSearch");
 if(oSearch) oSearch.addEventListener("input", renderOrderPage);
 
+const ohSearch = $("#ordHistSearch");
+if(ohSearch) ohSearch.addEventListener("input", renderOrderHistory);
+
 const dSearch = $("#debtSearch");
 if(dSearch) dSearch.addEventListener("input", renderDebtsPage);
 
+const dFilter = $("#debtFilter");
+if(dFilter) dFilter.addEventListener("change", renderDebtsPage);
+
+const discClr = $("#discClear");
+if(discClr) discClr.onclick = ()=>{ ui.disc.val = ""; const dv = $("#discVal"); if(dv) dv.value = ""; updateCartTotals(); };
+
 const cCartBtn = $("#clearCartBtn");
-if(cCartBtn) cCartBtn.onclick = ()=>{ ui.cart = []; renderCart(); };
+if(cCartBtn) cCartBtn.onclick = ()=>{ resetCart(); renderCart(); };
 
 const sOrderBtn = $("#submitOrderBtn");
 if(sOrderBtn) sOrderBtn.onclick = submitOrder;
